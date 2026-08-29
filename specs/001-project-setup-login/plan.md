@@ -184,7 +184,7 @@ No Constitution Check violations. This section is intentionally empty.
 
 | Risk | Effect | Handling |
 |------|--------|----------|
-| The Claude Design source (`Property Management - Properties.dc.html`) has not been imported — `/design-login` was never completed | The sign-in and records screens have no agreed visual design | Build to the specification's behavior with a plain, correct RTL layout. Applying the design is a later, separable task; nothing in this plan depends on it. Flagged so it is not mistaken for an oversight. |
+| ~~The Claude Design source has not been imported~~ — **resolved 2026-08-29** | — | Imported and applied (T082). The design system's tokens are vendored to `web/src/styles/design-system.css` and the application's `.pms-*` classes map onto them. The source proved **already Arabic and already RTL** (`dir="rtl" lang="ar"`), so no language or direction conversion was needed; its stylesheet did use four physical CSS properties, which the vendored copy converts. |
 | The Angular major version is not yet pinned | Scaffolding could pull a version whose APIs differ from what tasks assume | Pin at scaffold time, record the exact version in `research.md`, and commit the lockfile in the same task. |
 | No PostgreSQL client on the host | Migration and inspection steps could silently assume `psql` | Every database command in `quickstart.md` runs through the container. |
 | Self-signed certificate causes a browser warning on first use | A developer may assume the app is broken | `quickstart.md` states the expected warning and how to proceed, as an expected outcome rather than a failure. |

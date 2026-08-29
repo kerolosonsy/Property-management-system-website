@@ -78,6 +78,14 @@ func (s *Server) authed(role string, next http.HandlerFunc) http.Handler {
 				return
 			}
 		}
+		// FR-007: while a password change is outstanding no other action is
+		// possible. Three calls stay reachable because they are how the user
+		// resolves or abandons that state: reading their own identity, changing
+		// the password, and signing out.
+		if c != nil && c.Account.MustChangePassword && !passwordChangeExempt(r) {
+			WriteError(w, NewAPIError(http.StatusForbidden, CodePasswordChangeRequired, MsgPasswordChangeRequired))
+			return
+		}
 		next(w, r)
 	})
 }
@@ -102,4 +110,16 @@ func refuseNotFound(w http.ResponseWriter, r *http.Request) {
 func refuseInternal(w http.ResponseWriter, err error) {
 	slog.Error("internal error", "err", err, "err_type", fmt.Sprintf("%T", err))
 	WriteError(w, NewAPIError(http.StatusInternalServerError, CodeInternalError, MsgInternalError))
+}
+
+// passwordChangeExempt names the only endpoints reachable while an account has
+// an outstanding forced password change. Everything else is refused by FR-007.
+// /auth/me is exempt because it is how the client discovers the state at all.
+func passwordChangeExempt(r *http.Request) bool {
+	switch r.URL.Path {
+	case "/api/v1/auth/me", "/api/v1/auth/password", "/api/v1/auth/logout":
+		return true
+	default:
+		return false
+	}
 }

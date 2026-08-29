@@ -2,13 +2,21 @@
 // US4 — read recorded actions, newest first, filterable, paged.
 // Filters survive paging (FR-045). The screen offers no edit/delete
 // affordance — none exists (FR-046).
+//
+// FR-044 calls for filtering by the person who acted and by the account
+// affected. UUID inputs would force the operator to look those up
+// elsewhere, so the pickers below load the account list once (the screen is
+// administrator-only, and the GET /users endpoint already exists) and resolve
+// each selection back to the user id the API expects.
 
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RecordsService } from '../../api/api/records.service';
+import { UsersService } from '../../api/api/users.service';
 import { AuditRecord } from '../../api/model/audit-record.model';
 import { AuditAction } from '../../api/model/audit-action.model';
+import { User } from '../../api/model/user.model';
 import { ARABIC_MESSAGES, format } from '../../shared/messages';
 import { ApiError } from '../../core/api-error';
 
@@ -26,40 +34,50 @@ interface FilterValues {
   imports: [CommonModule, ReactiveFormsModule],
   template: `
     <section class="pms-page">
-      <div class="pms-card">
+      <div class="card">
         <h1>{{ msgs.recordsList }}</h1>
 
         <form [formGroup]="form" (ngSubmit)="applyFilters()" novalidate>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem;">
-            <div class="pms-field">
+            <div class="field pms-field">
               <label for="actorId">{{ msgs.filterByActor }}</label>
-              <input id="actorId" type="text" formControlName="actorId" placeholder="UUID" />
+              <select class="input" id="actorId" formControlName="actorId">
+                <option [ngValue]="''">{{ msgs.allAccounts }}</option>
+                @for (u of users(); track u.id) {
+                  <option [ngValue]="u.id">{{ u.displayName }} ({{ u.username }})</option>
+                }
+              </select>
             </div>
-            <div class="pms-field">
+            <div class="field pms-field">
               <label for="targetId">{{ msgs.filterByTarget }}</label>
-              <input id="targetId" type="text" formControlName="targetId" placeholder="UUID" />
+              <select class="input" id="targetId" formControlName="targetId">
+                <option [ngValue]="''">{{ msgs.allAccounts }}</option>
+                @for (u of users(); track u.id) {
+                  <option [ngValue]="u.id">{{ u.displayName }} ({{ u.username }})</option>
+                }
+              </select>
             </div>
-            <div class="pms-field">
+            <div class="field pms-field">
               <label for="action">{{ msgs.filterByAction }}</label>
-              <select id="action" formControlName="action">
-                <option [ngValue]="''">—</option>
+              <select class="input" id="action" formControlName="action">
+                <option [ngValue]="''">{{ msgs.allActions }}</option>
                 @for (a of allActions; track a) {
                   <option [ngValue]="a">{{ actionLabel(a) }}</option>
                 }
               </select>
             </div>
-            <div class="pms-field">
+            <div class="field pms-field">
               <label for="from">{{ msgs.filterByDateFrom }}</label>
-              <input id="from" type="date" formControlName="from" />
+              <input class="input" id="from" type="date" formControlName="from" />
             </div>
-            <div class="pms-field">
+            <div class="field pms-field">
               <label for="to">{{ msgs.filterByDateTo }}</label>
-              <input id="to" type="date" formControlName="to" />
+              <input class="input" id="to" type="date" formControlName="to" />
             </div>
           </div>
           <div style="display: flex; gap: 0.75rem;">
-            <button type="submit" class="pms-button">{{ msgs.applyFilters }}</button>
-            <button type="button" class="pms-button pms-button-secondary" (click)="clearFilters()">{{ msgs.clearFilters }}</button>
+            <button type="submit" class="btn btn-primary">{{ msgs.applyFilters }}</button>
+            <button type="button" class="btn btn-secondary" (click)="clearFilters()">{{ msgs.clearFilters }}</button>
           </div>
         </form>
 
@@ -68,11 +86,11 @@ interface FilterValues {
         }
 
         @if (loading()) {
-          <p class="pms-muted">{{ msgs.loading }}</p>
+          <p class="text-muted">{{ msgs.loading }}</p>
         } @else if (items().length === 0) {
           <p class="pms-empty">{{ msgs.noRecordsMatch }}</p>
         } @else {
-          <table class="pms-table">
+          <table class="table">
             <thead>
               <tr>
                 <th>{{ msgs.occurredAt }}</th>
@@ -98,17 +116,17 @@ interface FilterValues {
           <div class="pms-paging">
             <span>{{ format(totalLabel, { count: totalItems() }) }}</span>
             <div class="pms-toolbar-spacer"></div>
-            <button type="button" class="pms-button pms-button-secondary" (click)="prev()" [disabled]="page() <= 1">
+            <button type="button" class="btn btn-secondary" (click)="prev()" [disabled]="page() <= 1">
               {{ msgs.pagePrevious }}
             </button>
             <span>{{ format(pageLabel, { page: page() }) }}</span>
-            <button type="button" class="pms-button pms-button-secondary" (click)="next()" [disabled]="page() * pageSize() >= totalItems()">
+            <button type="button" class="btn btn-secondary" (click)="next()" [disabled]="page() * pageSize() >= totalItems()">
               {{ msgs.pageNext }}
             </button>
           </div>
         }
 
-        <p class="pms-muted" style="margin-block-start: 1rem;">{{ msgs.cannotEditRecord }}</p>
+        <p class="text-muted" style="margin-block-start: 1rem;">{{ msgs.cannotEditRecord }}</p>
       </div>
     </section>
   `,
@@ -134,6 +152,7 @@ export class RecordsComponent implements OnInit {
 
   private readonly fb = inject(FormBuilder);
   private readonly records = inject(RecordsService);
+  private readonly usersApi = inject(UsersService);
 
   protected readonly form = this.fb.nonNullable.group({
     actorId: [''],
@@ -149,8 +168,11 @@ export class RecordsComponent implements OnInit {
   protected readonly pageSize = signal(25);
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly users = signal<User[]>([]);
+  protected readonly usersLoaded = signal(false);
 
   ngOnInit(): void {
+    this.loadUsers();
     this.refresh();
   }
 
@@ -211,6 +233,24 @@ export class RecordsComponent implements OnInit {
       this.page.set(this.page() + 1);
       this.refresh();
     }
+  }
+
+  private loadUsers(): void {
+    // The records screen is administrator-only, so GET /users is authorized
+    // here. One large page is enough to populate both pickers; if the
+    // account count ever exceeds the page size, only the first page is
+    // listed, and the operator can fall back to date or action filters.
+    this.usersApi.listUsers({ page: 1, pageSize: 100, includeInactive: true }, 'body').subscribe({
+      next: (resp) => {
+        this.users.set(resp.items);
+        this.usersLoaded.set(true);
+      },
+      error: (_err: ApiError) => {
+        // Pickers will simply be empty; the date and action filters remain
+        // usable.
+        this.usersLoaded.set(true);
+      },
+    });
   }
 
   private refresh(): void {

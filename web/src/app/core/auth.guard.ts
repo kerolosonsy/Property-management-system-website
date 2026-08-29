@@ -26,7 +26,7 @@ export function landingPath(session: SessionService): string {
   if (user.mustChangePassword) {
     return '/change-password';
   }
-  return session.isAdmin() ? '/users' : '/home';
+  return session.isAdmin() ? '/settings/users' : '/home';
 }
 
 // Root route: send each visitor to the right place rather than always to

@@ -214,7 +214,7 @@ manager and confirm the screen and its endpoint are both refused.
 - [x] T079 [P] Confirm no secret is reachable in version history or in any log line — keys, tokens, passwords, and connection strings (FR-031, Constitution VII)
 - [x] T080 [P] Write api/README.md and web/README.md covering the run commands, the never-hand-edit rule for generated directories, and the owner-versus-application role split
 - [x] T081 Complete the result record table at the end of specs/001-project-setup-login/quickstart.md — an unrun row is an unmet requirement (Constitution V)
-- [ ] T082 Apply the Claude Design visual design to the sign-in, accounts, and records screens — **blocked** until `/design-login` is run and `Property Management - Properties.dc.html` is imported; converting it from LTR English to Arabic RTL is part of this task (Constitution II)
+- [x] T082 Apply the Claude Design visual design to the sign-in, accounts, and records screens — design system vendored to web/src/styles/design-system.css and the .pms-* classes mapped onto its tokens; the source proved already Arabic and already RTL, so the work was converting its four physical CSS properties to logical ones and applying the blueprint framing (Constitution II)
 
 ---
 
@@ -298,14 +298,13 @@ in Phases 3–6 is a deliberate placeholder, not an omission.
 
 ## Completion Status
 
-**79 of 82 complete.** The three open tasks all require something this repository cannot
-supply on its own:
+**80 of 82 complete.** The two open tasks both need a human at a browser:
 
 | Task | Why it is open |
 |---|---|
 | T067 | quickstart section E needs a browser and a real 31-minute idle wait |
 | T074 | quickstart section F needs a browser to drive the records screen |
-| T082 | blocked until `/design-login` imports the Claude Design source |
+| ~~T082~~ | **done 2026-08-29** — design imported and applied |
 
 Sections A and G of `quickstart.md` passed in full. Sections B, C, D, E, and F are
 recorded as PARTIAL: every step reachable by `curl`, `psql`, or `go test` was executed

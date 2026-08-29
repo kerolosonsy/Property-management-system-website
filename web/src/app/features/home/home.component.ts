@@ -1,33 +1,60 @@
 // web/src/app/features/home/home.component.ts
-// The landing screen for a signed-in user who is not an administrator.
+// Landing screen for a signed-in user who is not an administrator.
 //
-// This feature gives managers no screen of their own — accounts and records are
-// both administrator-only — so without a destination a signed-in manager has
-// nowhere to be and the router bounces them back to sign-in. This is
-// deliberately minimal: identity, and nothing invented beyond it.
+// Every other screen in feature 001 is administrator-only: accounts and the
+// records view both require the admin role. Without a destination a signed-in
+// manager has nowhere to be and the router sends them back to sign-in.
+//
+// It is deliberately small. Property, unit, lease, tenant and payment work
+// belongs to later specifications and is not invented here — the only action a
+// manager actually has in this feature is changing their own password
+// (FR-011).
 
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { SessionService } from '../../core/session.service';
 import { ARABIC_MESSAGES } from '../../shared/messages';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   template: `
-    <section class="pms-card">
-      <h1>{{ msgs.home }}</h1>
-      <p>{{ msgs.homeWelcome }}</p>
-      @if (session.user(); as u) {
+    <section class="pms-page">
+      <div class="card" style="max-inline-size: 32rem; margin-inline: auto;">
+        <h1>{{ msgs.home }}</h1>
+        <p>{{ msgs.homeWelcome }}</p>
+
+        @if (session.user(); as u) {
+          <table class="table">
+            <tbody>
+              <tr>
+                <th scope="row">{{ msgs.displayName }}</th>
+                <td>{{ u.displayName }}</td>
+              </tr>
+              <tr>
+                <th scope="row">{{ msgs.username }}</th>
+                <td>{{ u.username }}</td>
+              </tr>
+              <tr>
+                <th scope="row">{{ msgs.role }}</th>
+                <td>{{ roleLabel(u.role) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        }
+
         <p>
-          <strong>{{ u.displayName }}</strong>
-          <span class="pms-muted"> · {{ roleLabel(u.role) }}</span>
+          <a routerLink="/profile" class="btn btn-secondary">
+            {{ msgs.profile }}
+          </a>
         </p>
-      }
-      @if (!session.isAdmin()) {
-        <p class="pms-muted">{{ msgs.homeNoScreens }}</p>
-      }
+
+        @if (!session.isAdmin()) {
+          <p class="text-muted">{{ msgs.homeNoScreens }}</p>
+        }
+      </div>
     </section>
   `,
 })

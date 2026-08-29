@@ -19,32 +19,32 @@ import { SessionService } from '../../../core/session.service';
   imports: [CommonModule, ReactiveFormsModule, RouterLink, WesternDigitsDirective],
   template: `
     <section class="pms-page">
-      <div class="pms-card" style="max-inline-size: 36rem; margin-inline: auto;">
+      <div class="card" style="max-inline-size: 36rem; margin-inline: auto;">
         <header style="display: flex; align-items: center; gap: 1rem;">
           <h1 style="margin: 0; flex: 1;">{{ msgs.edit }}</h1>
-          <a routerLink="/users">{{ msgs.backToList }}</a>
+          <a routerLink="/settings/users">{{ msgs.backToList }}</a>
         </header>
 
         @if (loading()) {
-          <p class="pms-muted">{{ msgs.loading }}</p>
+          <p class="text-muted">{{ msgs.loading }}</p>
         } @else if (user(); as u) {
           <form [formGroup]="form" (ngSubmit)="onSave()" novalidate>
-            <div class="pms-field">
+            <div class="field pms-field">
               <label>{{ msgs.username }}</label>
-              <input type="text" [value]="u.username" disabled />
+              <input class="input" type="text" [value]="u.username" disabled />
             </div>
 
-            <div class="pms-field">
+            <div class="field pms-field">
               <label for="displayName">{{ msgs.displayName }}</label>
-              <input id="displayName" type="text" formControlName="displayName" appWesternDigits />
+              <input class="input" id="displayName" type="text" formControlName="displayName" appWesternDigits />
               @if (fieldError('displayName'); as msg) {
                 <div class="pms-field-error">{{ msg }}</div>
               }
             </div>
 
-            <div class="pms-field">
+            <div class="field pms-field">
               <label for="role">{{ msgs.role }}</label>
-              <select id="role" formControlName="role">
+              <select class="input" id="role" formControlName="role">
                 <option [ngValue]="'admin'">{{ msgs.roleAdmin }}</option>
                 <option [ngValue]="'manager'">{{ msgs.roleManager }}</option>
               </select>
@@ -53,7 +53,7 @@ import { SessionService } from '../../../core/session.service';
               }
             </div>
 
-            <div class="pms-field" style="flex-direction: row; align-items: center; gap: 0.5rem;">
+            <div class="field pms-field" style="display: flex; flex-direction: row; align-items: center; gap: 0.5rem;">
               <label for="isActive" style="margin: 0;">{{ msgs.active }}</label>
               <input id="isActive" type="checkbox" formControlName="isActive" />
             </div>
@@ -63,20 +63,20 @@ import { SessionService } from '../../../core/session.service';
             }
 
             <div style="display: flex; gap: 0.75rem;">
-              <button type="submit" class="pms-button" [disabled]="submitting() || form.invalid">
+              <button type="submit" class="btn btn-primary" [disabled]="submitting() || form.invalid">
                 {{ submitting() ? msgs.loading : msgs.save }}
               </button>
-              <a routerLink="/users" class="pms-button pms-button-secondary">{{ msgs.cancel }}</a>
+              <a routerLink="/settings/users" class="btn btn-secondary">{{ msgs.cancel }}</a>
             </div>
           </form>
 
-          <hr style="margin-block: 2rem;" />
+          <hr class="hr" style="margin-block: 2rem;" />
 
           <h2>{{ msgs.resetPassword }}</h2>
           <form [formGroup]="resetForm" (ngSubmit)="onResetPassword()" novalidate>
-            <div class="pms-field">
+            <div class="field pms-field">
               <label for="newPassword">{{ msgs.newPassword }}</label>
-              <input id="newPassword" type="password" formControlName="newPassword" autocomplete="new-password" />
+              <input class="input" id="newPassword" type="password" formControlName="newPassword" autocomplete="new-password" />
               @if (resetForm.controls.newPassword.touched && resetForm.controls.newPassword.invalid) {
                 <div class="pms-field-error">
                   @if (resetForm.controls.newPassword.hasError('required')) { {{ msgs.requiredField }} }
@@ -87,7 +87,7 @@ import { SessionService } from '../../../core/session.service';
             @if (resetMessage(); as msg) {
               <div class="pms-error-banner">{{ msg }}</div>
             }
-            <button type="submit" class="pms-button" [disabled]="resetting() || resetForm.invalid">
+            <button type="submit" class="btn btn-primary" [disabled]="resetting() || resetForm.invalid">
               {{ resetting() ? msgs.loading : msgs.resetPassword }}
             </button>
           </form>
@@ -164,7 +164,7 @@ export class UserEditComponent implements OnInit {
     }, 'body').subscribe({
       next: () => {
         this.submitting.set(false);
-        void this.router.navigate(['/users']);
+        void this.router.navigate(['/settings/users']);
       },
       error: (err: ApiError) => {
         this.submitting.set(false);

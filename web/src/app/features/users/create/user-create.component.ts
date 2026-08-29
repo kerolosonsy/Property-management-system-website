@@ -17,16 +17,16 @@ import { Role } from '../../../api/model/role.model';
   imports: [CommonModule, ReactiveFormsModule, RouterLink, WesternDigitsDirective],
   template: `
     <section class="pms-page">
-      <div class="pms-card" style="max-inline-size: 36rem; margin-inline: auto;">
+      <div class="card" style="max-inline-size: 36rem; margin-inline: auto;">
         <header style="display: flex; align-items: center; gap: 1rem;">
           <h1 style="margin: 0; flex: 1;">{{ msgs.create }}</h1>
-          <a routerLink="/users">{{ msgs.backToList }}</a>
+          <a routerLink="/settings/users">{{ msgs.backToList }}</a>
         </header>
 
         <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-          <div class="pms-field">
+          <div class="field pms-field">
             <label for="username">{{ msgs.username }}</label>
-            <input id="username" type="text" formControlName="username" appWesternDigits
+            <input class="input" id="username" type="text" formControlName="username" appWesternDigits
                    autocomplete="off" autocapitalize="off" spellcheck="false" />
             @if (form.controls.username.touched && form.controls.username.invalid) {
               <div class="pms-field-error">
@@ -39,9 +39,9 @@ import { Role } from '../../../api/model/role.model';
             }
           </div>
 
-          <div class="pms-field">
+          <div class="field pms-field">
             <label for="displayName">{{ msgs.displayName }}</label>
-            <input id="displayName" type="text" formControlName="displayName" appWesternDigits />
+            <input class="input" id="displayName" type="text" formControlName="displayName" appWesternDigits />
             @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
               <div class="pms-field-error">
                 @if (form.controls.displayName.hasError('required')) { {{ msgs.requiredField }} }
@@ -53,9 +53,9 @@ import { Role } from '../../../api/model/role.model';
             }
           </div>
 
-          <div class="pms-field">
+          <div class="field pms-field">
             <label for="role">{{ msgs.role }}</label>
-            <select id="role" formControlName="role">
+            <select class="input" id="role" formControlName="role">
               <option [ngValue]="''" disabled>{{ msgs.selectRole }}</option>
               <option [ngValue]="'admin'">{{ msgs.roleAdmin }}</option>
               <option [ngValue]="'manager'">{{ msgs.roleManager }}</option>
@@ -68,9 +68,9 @@ import { Role } from '../../../api/model/role.model';
             }
           </div>
 
-          <div class="pms-field">
+          <div class="field pms-field">
             <label for="initialPassword">{{ msgs.initialPassword }}</label>
-            <input id="initialPassword" type="password" formControlName="initialPassword" autocomplete="new-password" />
+            <input class="input" id="initialPassword" type="password" formControlName="initialPassword" autocomplete="new-password" />
             @if (form.controls.initialPassword.touched && form.controls.initialPassword.invalid) {
               <div class="pms-field-error">
                 @if (form.controls.initialPassword.hasError('required')) { {{ msgs.requiredField }} }
@@ -87,10 +87,10 @@ import { Role } from '../../../api/model/role.model';
           }
 
           <div style="display: flex; gap: 0.75rem;">
-            <button type="submit" class="pms-button" [disabled]="submitting() || form.invalid">
+            <button type="submit" class="btn btn-primary" [disabled]="submitting() || form.invalid">
               {{ submitting() ? msgs.loading : msgs.create }}
             </button>
-            <a routerLink="/users" class="pms-button pms-button-secondary">{{ msgs.cancel }}</a>
+            <a routerLink="/settings/users" class="btn btn-secondary">{{ msgs.cancel }}</a>
           </div>
         </form>
       </div>
@@ -139,7 +139,7 @@ export class UserCreateComponent {
     }, 'body').subscribe({
       next: () => {
         this.submitting.set(false);
-        void this.router.navigate(['/users']);
+        void this.router.navigate(['/settings/users']);
       },
       error: (err: ApiError) => {
         this.submitting.set(false);

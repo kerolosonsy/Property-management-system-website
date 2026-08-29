@@ -22,15 +22,23 @@ import { SessionService } from '../../core/session.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, WesternDigitsDirective],
   template: `
-    <section class="pms-page">
-      <div class="pms-card" style="max-inline-size: 28rem; margin-inline: auto;">
-        <h1>{{ msgs.signInTitle }}</h1>
-        <p class="pms-muted">{{ msgs.signInPrompt }}</p>
+    <section class="pms-auth-page">
+      <div class="card blueprint elev-md pms-auth-card">
+        <i class="corner tl"></i><i class="corner tr"></i>
+        <i class="corner bl"></i><i class="corner br"></i>
+
+        <div class="pms-auth-head">
+          <div class="pms-auth-mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"></path><path d="M6 21V9l6-5 6 5v12"></path><path d="M10 21v-6h4v6"></path></svg></div>
+          <div>
+            <div class="pms-auth-title">{{ msgs.appTitle }}</div>
+            <div class="pms-auth-sub">{{ msgs.signInPrompt }}</div>
+          </div>
+        </div>
 
         <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-          <div class="pms-field">
+          <div class="field pms-field">
             <label for="username">{{ msgs.username }}</label>
-            <input id="username" type="text" formControlName="username" autocomplete="username"
+            <input class="input" id="username" type="text" formControlName="username" autocomplete="username"
                    appWesternDigits autocapitalize="off" spellcheck="false" />
             @if (form.controls.username.touched && form.controls.username.invalid) {
               <div class="pms-field-error">
@@ -40,9 +48,9 @@ import { SessionService } from '../../core/session.service';
             }
           </div>
 
-          <div class="pms-field">
+          <div class="field pms-field">
             <label for="password">{{ msgs.password }}</label>
-            <input id="password" type="password" formControlName="password" autocomplete="current-password" />
+            <input class="input" id="password" type="password" formControlName="password" autocomplete="current-password" />
             @if (form.controls.password.touched && form.controls.password.hasError('required')) {
               <div class="pms-field-error">{{ msgs.requiredField }}</div>
             }
@@ -52,7 +60,7 @@ import { SessionService } from '../../core/session.service';
             <div class="pms-error-banner" role="alert">{{ msg }}</div>
           }
 
-          <button type="submit" class="pms-button" [disabled]="submitting() || form.invalid">
+          <button type="submit" class="btn btn-primary btn-block" [disabled]="submitting() || form.invalid">
             {{ submitting() ? msgs.loading : msgs.signInSubmit }}
           </button>
         </form>

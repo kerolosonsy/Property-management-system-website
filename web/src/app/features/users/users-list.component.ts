@@ -16,13 +16,13 @@ import { ApiError } from '../../core/api-error';
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
     <section class="pms-page">
-      <div class="pms-card">
+      <div class="card">
         <header style="display: flex; align-items: center; gap: 1rem;">
           <h1 style="margin: 0; flex: 1;">{{ msgs.usersList }}</h1>
-          <a routerLink="/users/new" class="pms-button">{{ msgs.create }}</a>
+          <a routerLink="/settings/users/new" class="btn btn-primary">{{ msgs.create }}</a>
         </header>
 
-        <div class="pms-field" style="flex-direction: row; align-items: center; gap: 0.5rem;">
+        <div class="field pms-field" style="display: flex; flex-direction: row; align-items: center; gap: 0.5rem;">
           <label for="includeInactive" style="margin: 0;">{{ msgs.inactive }}</label>
           <input id="includeInactive" type="checkbox" [formControl]="includeInactiveCtrl" />
         </div>
@@ -32,11 +32,11 @@ import { ApiError } from '../../core/api-error';
         }
 
         @if (loading()) {
-          <p class="pms-muted">{{ msgs.loading }}</p>
+          <p class="text-muted">{{ msgs.loading }}</p>
         } @else if (items().length === 0) {
           <p class="pms-empty">{{ msgs.noRecordsMatch }}</p>
         } @else {
-          <table class="pms-table">
+          <table class="table">
             <thead>
               <tr>
                 <th>{{ msgs.username }}</th>
@@ -66,11 +66,11 @@ import { ApiError } from '../../core/api-error';
           <div class="pms-paging">
             <span>{{ format(totalLabel, { count: totalItems() }) }}</span>
             <div class="pms-toolbar-spacer"></div>
-            <button type="button" class="pms-button pms-button-secondary" (click)="prev()" [disabled]="page() <= 1">
+            <button type="button" class="btn btn-secondary" (click)="prev()" [disabled]="page() <= 1">
               {{ msgs.pagePrevious }}
             </button>
             <span>{{ format(pageLabel, { page: page() }) }}</span>
-            <button type="button" class="pms-button pms-button-secondary" (click)="next()" [disabled]="page() * pageSize() >= totalItems()">
+            <button type="button" class="btn btn-secondary" (click)="next()" [disabled]="page() * pageSize() >= totalItems()">
               {{ msgs.pageNext }}
             </button>
           </div>

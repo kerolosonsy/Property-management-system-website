@@ -1,204 +1,410 @@
 // web/src/styles.scss
-// Base styles. RTL is structural: every property uses logical CSS
-// (margin-inline-start, padding-inline-end, inset-inline-*, text-align: start)
-// so mirroring follows dir="rtl" without per-component patches (Constitution II).
+// Application-level styles, layered on the Claude Design "Industry" design
+// system (T082).
+//
+// The design system itself — its tokens *and* its component classes (.btn,
+// .card, .input, .field, .table, .tag, .nav, .hr, .text-muted, .blueprint) —
+// lives in styles/design-system.css, vendored from the design project. The
+// templates use those classes directly; this file adds only what the design
+// system has no class for: page layout, the application toolbar, form-field
+// spacing, error/empty states and paging (Constitution VI — surgical change).
+//
+// RTL is structural: every property here uses logical CSS (margin-inline-start,
+// padding-inline-end, inset-inline-*, text-align: start), so mirroring follows
+// dir="rtl" without per-component patches (Constitution II).
 
-:root {
-  --pms-color-bg: #fafafa;
-  --pms-color-surface: #ffffff;
-  --pms-color-text: #1f1f1f;
-  --pms-color-muted: #6b6b6b;
-  --pms-color-border: #e2e2e2;
-  --pms-color-primary: #0b6e4f;
-  --pms-color-primary-hover: #094f3a;
-  --pms-color-danger: #b3261e;
-  --pms-color-danger-bg: #fdecea;
-  --pms-radius: 6px;
-  --pms-gap: 1rem;
-  --pms-font-stack: "Segoe UI", "Tahoma", "Cairo", system-ui, sans-serif;
+@use 'styles/design-system.css';
+
+html, body { height: 100%; }
+
+// Heading scale for application screens.
+//
+// The vendored design system carries the full display ramp (h1 42px, h2 32px,
+// h3 25px) and that file stays faithful to it. The mockup's own screens never
+// render it: every <h1> in the design is overridden inline to 25px and every
+// <h2> to 20px, because a screen heading is not a display heading. These rules
+// put the application at the sizes the design actually shows.
+.pms-page h1, .pms-auth-card h1 { font-size: 25px; }
+.pms-page h2, .pms-auth-card h2 { font-size: 20px; }
+.pms-page h3, .pms-auth-card h3 { font-size: 17px; }
+
+a:hover { text-decoration: underline; }
+
+// — layout —
+
+.pms-page {
+  padding: var(--space-6);
+  max-inline-size: 1100px;
+  margin-inline: auto;
 }
 
-html, body {
-  height: 100%;
+// A page is one .card holding a whole screen, so it needs more room than the
+// design's compact content card. The card itself — square, hairline,
+// transparent — is the design's.
+.pms-page > .card {
+  padding: var(--space-6);
+  gap: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
-body {
-  margin: 0;
-  background: var(--pms-color-bg);
-  color: var(--pms-color-text);
-  font-family: var(--pms-font-stack);
-  font-size: 16px;
-  line-height: 1.5;
-  text-align: start;
+// — toolbar: the design's .nav, plus the application chrome it does not
+//   describe (a divider under the bar and an opaque background) —
+
+.pms-toolbar {
+  padding-inline: var(--space-6);
+  border-block-end: 1px solid var(--color-divider);
+  background: var(--color-bg);
+
+  strong {
+    font-family: var(--font-heading);
+    font-weight: var(--font-heading-weight);
+    font-size: 18px;
+  }
+
+  nav { display: flex; gap: var(--space-4); }
 }
 
-a {
-  color: var(--pms-color-primary);
-  text-decoration: none;
+.pms-toolbar-spacer { flex: 1; }
+
+.pms-toolbar-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
 }
 
-a:hover {
-  text-decoration: underline;
-}
-
-button {
-  font-family: inherit;
-  font-size: inherit;
-}
-
-input, select, textarea {
-  font-family: inherit;
-  font-size: inherit;
-  color: inherit;
-}
-
-.pms-card {
-  background: var(--pms-color-surface);
-  border: 1px solid var(--pms-color-border);
-  border-radius: var(--pms-radius);
-  padding: 1.5rem;
-  margin-block-end: var(--pms-gap);
-}
-
-.pms-button {
-  background: var(--pms-color-primary);
-  color: #fff;
-  border: 0;
-  border-radius: var(--pms-radius);
-  padding-block: 0.5rem;
-  padding-inline: 1rem;
-  cursor: pointer;
-}
-
-.pms-button:hover:not(:disabled) {
-  background: var(--pms-color-primary-hover);
-}
-
-.pms-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pms-button-secondary {
-  background: transparent;
-  color: var(--pms-color-text);
-  border: 1px solid var(--pms-color-border);
-}
-
-.pms-button-danger {
-  background: var(--pms-color-danger);
-}
+// — forms: .field and .input come from the design system; only the vertical
+//   rhythm between fields and the validation message are ours —
 
 .pms-field {
-  display: flex;
-  flex-direction: column;
-  margin-block-end: 1rem;
-}
-
-.pms-field > label {
-  margin-block-end: 0.25rem;
-  font-weight: 600;
-}
-
-.pms-field > input,
-.pms-field > select,
-.pms-field > textarea {
-  padding-block: 0.5rem;
-  padding-inline: 0.75rem;
-  border: 1px solid var(--pms-color-border);
-  border-radius: var(--pms-radius);
-  background: var(--pms-color-surface);
-  text-align: start;
-}
-
-.pms-field > input:focus,
-.pms-field > select:focus,
-.pms-field > textarea:focus {
-  outline: 2px solid var(--pms-color-primary);
-  outline-offset: 1px;
+  margin-block-end: var(--space-4);
 }
 
 .pms-field-error {
-  color: var(--pms-color-danger);
-  font-size: 0.875rem;
-  margin-block-start: 0.25rem;
+  margin-block-start: 4px;
+  font-size: 12px;
+  color: var(--color-accent-700);
 }
+
+// — feedback —
 
 .pms-error-banner {
-  background: var(--pms-color-danger-bg);
-  color: var(--pms-color-danger);
-  border: 1px solid var(--pms-color-danger);
-  border-radius: var(--pms-radius);
-  padding-block: 0.75rem;
-  padding-inline: 1rem;
-  margin-block-end: 1rem;
+  padding: var(--space-3);
+  margin-block: var(--space-3);
+  border: 1px solid var(--color-accent-700);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  color: var(--color-accent-800);
+  font-size: 13px;
 }
 
-.pms-muted {
-  color: var(--pms-color-muted);
+.pms-empty {
+  padding: var(--space-8);
+  text-align: center;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
 }
 
-.pms-page {
-  max-inline-size: 64rem;
-  margin-inline: auto;
-  padding-block: 2rem;
-  padding-inline: 1.5rem;
-}
-
-.pms-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding-block: 1rem;
-  padding-inline: 1.5rem;
-  background: var(--pms-color-surface);
-  border-block-end: 1px solid var(--pms-color-border);
-}
-
-.pms-toolbar > .pms-toolbar-spacer {
-  flex: 1;
-}
-
-.pms-toolbar > .pms-toolbar-user {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--pms-color-muted);
-}
-
-.pms-toolbar > nav {
-  display: flex;
-  gap: 1rem;
-}
-
-.pms-table {
-  inline-size: 100%;
-  border-collapse: collapse;
-}
-
-.pms-table > thead > tr > th,
-.pms-table > tbody > tr > td {
-  padding-block: 0.5rem;
-  padding-inline: 0.75rem;
-  text-align: start;
-  border-block-end: 1px solid var(--pms-color-border);
-}
-
-.pms-table > thead > tr > th {
-  background: var(--pms-color-bg);
-  font-weight: 600;
-}
+// — paging —
 
 .pms-paging {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-block-start: 1rem;
+  gap: var(--space-3);
+  margin-block-start: var(--space-4);
 }
 
-.pms-empty {
-  padding-block: 2rem;
-  padding-inline: 1rem;
+// — the centred auth card: the design frames sign-in and password change as a
+//   blueprint object on an otherwise empty page —
+
+.pms-auth-page {
+  min-block-size: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.pms-auth-card {
+  inline-size: 100%;
+  max-inline-size: 400px;
+  padding: var(--space-8);
+  gap: var(--space-5);
+  background: var(--color-bg);
+}
+
+.pms-auth-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
   text-align: center;
-  color: var(--pms-color-muted);
+}
+
+.pms-auth-mark {
+  inline-size: 44px;
+  block-size: 44px;
+  flex: none;
+  border: 1px solid var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+}
+
+.pms-auth-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+}
+
+.pms-auth-sub { font-size: 12px; opacity: 0.55; }
+
+// ── Application shell ──────────────────────────────────────────────────────
+//
+// The design's layout: a fixed-width aside beside the routed view. Under
+// dir="rtl" the aside sits on the inline-start edge, which renders on the
+// right; `border-inline-end` and `inset-inline-*` keep every edge correct
+// without a direction-specific override (Constitution II).
+
+.pms-shell {
+  display: flex;
+  block-size: 100vh;
+  overflow: hidden;
+}
+
+.pms-aside {
+  inline-size: 236px;
+  flex: none;
+  border-inline-end: 1px solid var(--color-divider);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  transition: inline-size 180ms ease;
+}
+
+// Collapsed: an icon rail. Everything stays reachable — only the labels go.
+.pms-shell.is-collapsed .pms-aside { inline-size: 60px; }
+
+// The label spans and text blocks that disappear when collapsed. Hidden with
+// display:none rather than width:0 so they are removed from the accessibility
+// tree too, and each control keeps a title attribute as its accessible name.
+.pms-shell.is-collapsed .pms-collapsible { display: none; }
+
+.pms-shell.is-collapsed {
+  .pms-brand { justify-content: center; }
+
+  .pms-nav a,
+  .pms-aside-user,
+  .pms-signout {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
+// Respect a reduced-motion preference: the width still changes, just instantly.
+@media (prefers-reduced-motion: reduce) {
+  .pms-aside { transition: none; }
+}
+
+.pms-nav-toggle {
+  position: absolute;
+  inset-block-start: var(--space-4);
+  inset-inline-end: var(--space-2);
+  inline-size: 24px;
+  block-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-divider);
+  border-radius: 0;
+  opacity: 0.6;
+
+  &:hover { opacity: 1; background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+
+  // The chevron is drawn pointing inline-start. `scaleX(-1)` under RTL keeps it
+  // pointing the way the panel actually moves, and it flips again when
+  // collapsed so it always indicates the action, not the state.
+  svg { transition: transform 180ms ease; }
+}
+
+[dir="rtl"] .pms-nav-toggle svg { transform: scaleX(-1); }
+.pms-shell.is-collapsed .pms-nav-toggle svg { transform: scaleX(1); }
+[dir="rtl"] .pms-shell.is-collapsed .pms-nav-toggle svg { transform: scaleX(1); }
+
+// Collapsed, the toggle centres itself over the rail.
+.pms-shell.is-collapsed .pms-nav-toggle {
+  inset-inline-end: 50%;
+  transform: translateX(50%);
+  inset-block-start: calc(var(--space-4) + 40px);
+}
+
+.pms-main {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.pms-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pms-brand-name {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.pms-brand-sub {
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+.pms-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  a {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    font-size: 14px;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  a:hover {
+    background: color-mix(in srgb, var(--color-text) 6%, transparent);
+    text-decoration: none;
+  }
+
+  // The current section, marked by routerLinkActive.
+  a.is-current {
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  }
+
+  svg { flex: none; }
+}
+
+.pms-aside-foot {
+  margin-block-start: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+// The signed-in person's name is the link to their own profile.
+.pms-aside-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--color-text);
+  text-decoration: none;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-text) 6%, transparent);
+    text-decoration: none;
+  }
+
+  &.is-current {
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  }
+
+  .pms-collapsible { display: flex; flex-direction: column; }
+}
+
+.pms-aside-user-name { font-weight: 600; }
+
+.pms-avatar {
+  inline-size: 28px;
+  block-size: 28px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-divider);
+  color: var(--color-accent);
+}
+
+.pms-signout {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+// ── View header ────────────────────────────────────────────────────────────
+
+.pms-view-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border-block-end: 1px solid var(--color-divider);
+
+  h1 { margin: 0; font-size: 25px; }
+}
+
+.pms-crumb {
+  font-size: 12px;
+  opacity: 0.55;
+}
+
+// ── Settings section nav ───────────────────────────────────────────────────
+
+.pms-subnav-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+  padding: var(--space-6);
+}
+
+.pms-subnav {
+  inline-size: 180px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  a {
+    padding: var(--space-2) var(--space-3);
+    font-size: 14px;
+    color: var(--color-text);
+    text-decoration: none;
+    border-inline-start: 2px solid transparent;
+  }
+
+  a:hover {
+    background: color-mix(in srgb, var(--color-text) 6%, transparent);
+    text-decoration: none;
+  }
+
+  a.is-current {
+    color: var(--color-accent);
+    border-inline-start-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  }
+}
+
+.pms-subnav-body {
+  flex: 1;
+  min-inline-size: 0;
+
+  // Sections supply their own card; the page wrapper's padding would double up
+  // with the layout's.
+  .pms-page { padding: 0; max-inline-size: none; }
 }

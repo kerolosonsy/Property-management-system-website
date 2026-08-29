@@ -72,12 +72,12 @@ func (s *Server) handleMe() http.Handler {
 			WriteError(w, NewAPIError(http.StatusUnauthorized, CodeNotAuthenticated, MsgUnauthorized))
 			return
 		}
-		// If password change is required, surface that as a 403 with a typed code
-		// so the client routes to the change screen (FR-007, FR-010).
-		if c.Account.MustChangePassword {
-			WriteError(w, NewAPIError(http.StatusForbidden, CodePasswordChangeRequired, MsgPasswordChangeRequired))
-			return
-		}
+		// /auth/me answers 200 even when a password change is outstanding: the
+		// contract declares only 200 and 401 here, and CurrentUser.mustChangePassword
+		// exists precisely so the client can learn the state and route to the change
+		// screen. Refusing this call would leave the client unable to discover who it
+		// is, and therefore unable to reach that screen at all. FR-007 is enforced on
+		// every other endpoint by requirePasswordChanged in the route wrapper.
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(currentUserResponse(c.Account))

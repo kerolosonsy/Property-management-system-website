@@ -76,10 +76,14 @@ The user interface language is **Arabic only**. Layout direction is **RTL**.
   `padding-inline-end`, `inset-inline-*`, `text-align: start`) rather than
   physical `left`/`right` properties, so mirroring is structural and not patched
   per component.
-- Imported Claude Design `.dc.html` sources are LTR English. They are a **visual
-  reference, not shippable markup**. Converting a design to Arabic RTL is
-  explicit work in every plan that consumes one; a task list that imports a
-  design without an RTL conversion task is incomplete.
+- Imported Claude Design `.dc.html` sources are a **visual reference, not
+  shippable markup**: they carry template placeholders and mock data, and their
+  stylesheet may mix physical and logical CSS. Every plan that consumes one
+  states what it takes from the design (tokens, component classes, layout) and
+  audits the result against the logical-property rule above. Where a design's own
+  CSS uses physical properties, the vendored copy converts them and says so.
+  A design that already ships Arabic RTL copy is a starting point, not a licence
+  to skip that audit.
 - Icons and imagery that encode direction (arrows, progress, chevrons) MUST be
   mirrored. Icons that do not (logos, clocks, media controls) MUST NOT be.
 - Numerals, dates, and currency MUST render consistently across the app; the
