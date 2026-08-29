@@ -1,0 +1,27 @@
+# Secrets, certificates, and environment files
+.env
+infra/certs/
+
+# Web
+web/node_modules/
+web/dist/
+web/.angular/
+
+# Go
+api/bin/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# OpenAPI generator output (kept under git in api/internal/gen and web/src/app/api
+# when committed intentionally; not ignored)

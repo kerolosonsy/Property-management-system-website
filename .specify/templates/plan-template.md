@@ -40,7 +40,35 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Derived from `.specify/memory/constitution.md` v1.1.0. Mark each gate PASS, FAIL,
+or N/A with a one-line justification. A FAIL blocks the phase until resolved or
+recorded in Complexity Tracking below.
+
+- [ ] **I. Authorization** — Every new endpoint has an explicit server-side role
+      check (admin vs manager); manager is denied all configuration access; no
+      route relies on an Angular guard for enforcement.
+- [ ] **II. Arabic RTL** — All new UI strings are Arabic; layout uses logical CSS
+      properties; any imported `.dc.html` design has a corresponding RTL
+      conversion task.
+- [ ] **III. Contract-First** — Every new or changed endpoint is defined in
+      `contracts/` OpenAPI before implementation; the Angular client is generated
+      from it.
+- [ ] **IV. Data Integrity** — Relationships are real foreign keys; schema change
+      ships as a forward-only migration; money uses integer minor units or
+      NUMERIC (never float); timestamps are UTC `timestamptz`.
+- [ ] **V. Manual Verification** — `quickstart.md` contains a concrete,
+      step-by-step verification procedure, including a manager-denied-config step
+      where configuration is touched.
+- [ ] **VI. Simplicity** — No speculative abstraction, no unrequested
+      configurability, no new dependency this feature does not need.
+- [ ] **VII. Encryption** — Uploads are AES-256-GCM envelope-encrypted before
+      touching disk (no plaintext temp file); attachments served only via an
+      authorized decrypting handler; national ID / passport / bank account / IBAN
+      columns encrypted; no secret, key, or decrypted value reachable by a log;
+      TLS on every listener including local.
+- [ ] **VIII. Audit** — Every create/update/delete on business records and every
+      attachment download writes an append-only audit row (actor, role, action,
+      entity, UTC timestamp, IP) in the same transaction as the change.
 
 ## Project Structure
 

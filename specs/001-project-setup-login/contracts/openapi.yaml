@@ -1,0 +1,608 @@
+openapi: 3.1.0
+
+info:
+  title: Property Management System — Authentication and Accounts
+  version: 1.0.0
+  description: |
+    Source of truth for the boundary between the Angular application and the Go service
+    for feature 001-project-setup-login. The Go server interface and the Angular client
+    are both generated from this document; neither side hand-writes these types.
+
+    Authorization is decided on the server for every operation. `x-required-role`
+    states the requirement; an operation marked `admin` is refused for a manager
+    regardless of how the request is made (FR-004, FR-005).
+
+    Every response body uses Western Arabic digits. Messages shown to users are Arabic
+    (FR-027). All timestamps are RFC 3339 in UTC; the client renders them in
+    Africa/Cairo (FR-047).
+
+servers:
+  - url: https://localhost:8443/api/v1
+    description: Local development. TLS only — there is no plaintext listener (FR-029).
+
+tags:
+  - name: auth
+    description: Signing in, signing out, and the caller's own account
+  - name: users
+    description: Account administration — administrator only
+  - name: records
+    description: Recorded actions — administrator only
+  - name: system
+    description: Liveness
+
+security:
+  - sessionCookie: []
+
+paths:
+  /health:
+    get:
+      tags: [system]
+      operationId: getHealth
+      summary: Liveness check
+      description: Confirms the service is running and can reach the database.
+      security: []
+      x-required-role: none
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        '503':
+          $ref: '#/components/responses/Error'
+
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: signIn
+      summary: Sign in
+      description: |
+        Verifies a username and password and issues a session cookie.
+
+        The refusal for an unknown username, a wrong password, and a deactivated
+        account is byte-identical (FR-013). Repeated failures impose a growing wait
+        that applies equally to usernames that do not exist (FR-014, FR-040); while a
+        wait is outstanding the attempt is refused as `too_soon` even if the password
+        is correct (FR-015).
+      security: []
+      x-required-role: none
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 32
+                password:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+      responses:
+        '200':
+          description: |
+            Signed in. Sets the session cookie with `HttpOnly`, `Secure`,
+            `SameSite=Strict` (FR-021).
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: 'pms_session=<opaque token>; HttpOnly; Secure; SameSite=Strict; Path=/'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          description: |
+            Refused. The body is identical for an unknown username, a wrong password,
+            and a deactivated account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Submitted before the current waiting period elapsed.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Error'
+                  - type: object
+                    required: [retryAfterSeconds]
+                    properties:
+                      retryAfterSeconds:
+                        type: integer
+                        minimum: 1
+                        maximum: 60
+                        description: Seconds remaining before another attempt is accepted.
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: signOut
+      summary: Sign out
+      description: Revokes the current session immediately (FR-019).
+      x-required-role: any
+      responses:
+        '204':
+          description: Signed out; the session cookie is cleared and the session revoked.
+        '401':
+          $ref: '#/components/responses/Error'
+
+  /auth/me:
+    get:
+      tags: [auth]
+      operationId: getCurrentUser
+      summary: The signed-in account as it stands right now
+      description: |
+        Reads role and active state from stored data on each call, so a demotion or
+        deactivation is reflected on the next request without signing out (FR-034,
+        FR-035).
+      x-required-role: any
+      responses:
+        '200':
+          description: The caller's current identity, role, and password-change state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '401':
+          $ref: '#/components/responses/Error'
+
+  /auth/password:
+    post:
+      tags: [auth]
+      operationId: changeOwnPassword
+      summary: Change your own password
+      description: |
+        Requires the current password (FR-011). On success every session belonging to
+        the account is revoked, including this one, and the caller must sign in again
+        (FR-020).
+      x-required-role: any
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                  maxLength: 256
+                newPassword:
+                  type: string
+                  minLength: 12
+                  maxLength: 256
+      responses:
+        '204':
+          description: Password changed; all sessions revoked.
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+
+  /users:
+    get:
+      tags: [users]
+      operationId: listUsers
+      summary: List accounts
+      x-required-role: admin
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: A page of accounts, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page, pageSize, totalItems]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  totalItems: { type: integer }
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [users]
+      operationId: createUser
+      summary: Create an account
+      description: |
+        There is no self-registration; only an administrator reaches this operation
+        (FR-006). The new account must change its password at first sign-in (FR-010).
+        A username that canonicalizes to an existing one is refused as already in use
+        (FR-038).
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, displayName, role, initialPassword]
+              properties:
+                username:
+                  $ref: '#/components/schemas/Username'
+                displayName:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                role:
+                  $ref: '#/components/schemas/Role'
+                initialPassword:
+                  type: string
+                  minLength: 12
+                  maxLength: 256
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '409':
+          description: A username that renders identically already exists (FR-038).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [users]
+      operationId: getUser
+      summary: Read one account
+      x-required-role: admin
+      responses:
+        '200':
+          description: The account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [users]
+      operationId: updateUser
+      summary: Change display name, role, or active state
+      description: |
+        A role change takes effect on the affected user's next request and does not end
+        their session (FR-035). Deactivation revokes every session belonging to the
+        account (FR-020).
+
+        Refused when the change would leave no active administrator, and when an
+        administrator targets their own account for demotion or deactivation.
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                displayName:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                role:
+                  $ref: '#/components/schemas/Role'
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: |
+            Refused because it would leave no active administrator, or because the
+            caller targeted their own account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{userId}/password:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      tags: [users]
+      operationId: resetUserPassword
+      summary: Reset another account's password
+      description: |
+        Administrator only (FR-012). The account must change the password at its next
+        sign-in, and all its sessions are revoked (FR-010, FR-020). The current password
+        is not required and is never readable (FR-008).
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newPassword]
+              properties:
+                newPassword:
+                  type: string
+                  minLength: 12
+                  maxLength: 256
+      responses:
+        '204':
+          description: Password reset; sessions revoked; change required at next sign-in.
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /audit-records:
+    get:
+      tags: [records]
+      operationId: listAuditRecords
+      summary: Read recorded actions
+      description: |
+        Administrator only (FR-043). Newest first, paged, filters combinable (FR-044,
+        FR-045). There is no operation anywhere in this document that edits or deletes a
+        record (FR-046, FR-024).
+      x-required-role: admin
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: actorId
+          in: query
+          description: Only actions performed by this account
+          schema:
+            type: string
+            format: uuid
+        - name: targetId
+          in: query
+          description: Only actions that affected this account
+          schema:
+            type: string
+            format: uuid
+        - name: action
+          in: query
+          description: Only this kind of action
+          schema:
+            $ref: '#/components/schemas/AuditAction'
+        - name: from
+          in: query
+          description: Start of the range, inclusive of the whole day in Africa/Cairo
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          description: End of the range, inclusive of the whole day in Africa/Cairo
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: A page of records, newest first. An empty page is a valid answer.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page, pageSize, totalItems]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditRecord'
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  totalItems: { type: integer }
+        '400':
+          description: Invalid filter — for example a start date later than the end date.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+
+components:
+
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: pms_session
+      description: |
+        Opaque session token. The server stores only its hash. The cookie is `HttpOnly`,
+        so no script can read it (FR-021). The token carries identity only — role and
+        active state are read from stored data on every request (FR-034).
+
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+
+  schemas:
+
+    Role:
+      type: string
+      enum: [admin, manager]
+      description: Exactly two roles exist (FR-002).
+
+    Username:
+      type: string
+      minLength: 3
+      maxLength: 32
+      description: |
+        Arabic letters, Latin letters, Western digits, dot, underscore, or hyphen
+        (FR-036). Stored as typed and displayed as typed (FR-039); matched after
+        canonicalization, so case and Arabic letter variants do not create a second
+        account (FR-038). Invisible and bidirectional control characters are refused
+        (FR-037). Eastern Arabic digits are converted to Western on entry (FR-033).
+
+    User:
+      type: object
+      required: [id, username, displayName, role, isActive, mustChangePassword, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        username: { $ref: '#/components/schemas/Username' }
+        displayName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        isActive: { type: boolean }
+        mustChangePassword: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CurrentUser:
+      type: object
+      required: [id, username, displayName, role, mustChangePassword]
+      description: |
+        The caller as they stand on this request. `mustChangePassword` true means the
+        client must send the user to the password-change screen and no other (FR-007,
+        FR-010).
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        displayName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        mustChangePassword: { type: boolean }
+
+    AuditAction:
+      type: string
+      enum:
+        - sign_in_succeeded
+        - sign_in_failed
+        - sign_out
+        - password_changed
+        - password_reset
+        - account_created
+        - account_role_changed
+        - account_activated
+        - account_deactivated
+        - sessions_invalidated
+        - admin_recovery_used
+
+    AuditRecord:
+      type: object
+      required: [id, occurredAt, action, actorUsername, sourceIp]
+      description: |
+        A record is never rewritten. The snapshot fields show accounts as they were named
+        when the action happened, even if renamed since. Never contains a password or any
+        decrypted value (FR-025).
+      properties:
+        id: { type: integer, format: int64 }
+        occurredAt: { type: string, format: date-time }
+        action: { $ref: '#/components/schemas/AuditAction' }
+        actorId:
+          type: [string, 'null']
+          format: uuid
+          description: Null when the actor was never authenticated, such as a failed sign-in with an unknown username.
+        actorUsername: { type: string }
+        actorRole:
+          oneOf:
+            - $ref: '#/components/schemas/Role'
+            - type: 'null'
+        targetId:
+          type: [string, 'null']
+          format: uuid
+        targetUsername:
+          type: [string, 'null']
+        sourceIp: { type: string }
+        detail:
+          type: [object, 'null']
+          additionalProperties: true
+          description: Field names and identifiers only.
+
+    Error:
+      type: object
+      required: [code, message]
+      description: |
+        The single error shape used by every operation in this document
+        (Constitution III). `message` is Arabic and states what the user should do next
+        (FR-027). It never carries internal failure detail (FR-028).
+      properties:
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - invalid_credentials
+            - too_soon
+            - not_authenticated
+            - forbidden
+            - not_found
+            - conflict
+            - password_change_required
+            - internal_error
+        message:
+          type: string
+          description: Arabic, user-facing.
+        fields:
+          type: [object, 'null']
+          additionalProperties:
+            type: string
+          description: Field-level Arabic messages, keyed by field name, for form errors.
+
+  responses:
+    Error:
+      description: The request was refused. Body is the single error shape.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

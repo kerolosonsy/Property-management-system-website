@@ -1,0 +1,204 @@
+// web/src/styles.scss
+// Base styles. RTL is structural: every property uses logical CSS
+// (margin-inline-start, padding-inline-end, inset-inline-*, text-align: start)
+// so mirroring follows dir="rtl" without per-component patches (Constitution II).
+
+:root {
+  --pms-color-bg: #fafafa;
+  --pms-color-surface: #ffffff;
+  --pms-color-text: #1f1f1f;
+  --pms-color-muted: #6b6b6b;
+  --pms-color-border: #e2e2e2;
+  --pms-color-primary: #0b6e4f;
+  --pms-color-primary-hover: #094f3a;
+  --pms-color-danger: #b3261e;
+  --pms-color-danger-bg: #fdecea;
+  --pms-radius: 6px;
+  --pms-gap: 1rem;
+  --pms-font-stack: "Segoe UI", "Tahoma", "Cairo", system-ui, sans-serif;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--pms-color-bg);
+  color: var(--pms-color-text);
+  font-family: var(--pms-font-stack);
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: start;
+}
+
+a {
+  color: var(--pms-color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+.pms-card {
+  background: var(--pms-color-surface);
+  border: 1px solid var(--pms-color-border);
+  border-radius: var(--pms-radius);
+  padding: 1.5rem;
+  margin-block-end: var(--pms-gap);
+}
+
+.pms-button {
+  background: var(--pms-color-primary);
+  color: #fff;
+  border: 0;
+  border-radius: var(--pms-radius);
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
+  cursor: pointer;
+}
+
+.pms-button:hover:not(:disabled) {
+  background: var(--pms-color-primary-hover);
+}
+
+.pms-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pms-button-secondary {
+  background: transparent;
+  color: var(--pms-color-text);
+  border: 1px solid var(--pms-color-border);
+}
+
+.pms-button-danger {
+  background: var(--pms-color-danger);
+}
+
+.pms-field {
+  display: flex;
+  flex-direction: column;
+  margin-block-end: 1rem;
+}
+
+.pms-field > label {
+  margin-block-end: 0.25rem;
+  font-weight: 600;
+}
+
+.pms-field > input,
+.pms-field > select,
+.pms-field > textarea {
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--pms-color-border);
+  border-radius: var(--pms-radius);
+  background: var(--pms-color-surface);
+  text-align: start;
+}
+
+.pms-field > input:focus,
+.pms-field > select:focus,
+.pms-field > textarea:focus {
+  outline: 2px solid var(--pms-color-primary);
+  outline-offset: 1px;
+}
+
+.pms-field-error {
+  color: var(--pms-color-danger);
+  font-size: 0.875rem;
+  margin-block-start: 0.25rem;
+}
+
+.pms-error-banner {
+  background: var(--pms-color-danger-bg);
+  color: var(--pms-color-danger);
+  border: 1px solid var(--pms-color-danger);
+  border-radius: var(--pms-radius);
+  padding-block: 0.75rem;
+  padding-inline: 1rem;
+  margin-block-end: 1rem;
+}
+
+.pms-muted {
+  color: var(--pms-color-muted);
+}
+
+.pms-page {
+  max-inline-size: 64rem;
+  margin-inline: auto;
+  padding-block: 2rem;
+  padding-inline: 1.5rem;
+}
+
+.pms-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-block: 1rem;
+  padding-inline: 1.5rem;
+  background: var(--pms-color-surface);
+  border-block-end: 1px solid var(--pms-color-border);
+}
+
+.pms-toolbar > .pms-toolbar-spacer {
+  flex: 1;
+}
+
+.pms-toolbar > .pms-toolbar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--pms-color-muted);
+}
+
+.pms-toolbar > nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.pms-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+
+.pms-table > thead > tr > th,
+.pms-table > tbody > tr > td {
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+  text-align: start;
+  border-block-end: 1px solid var(--pms-color-border);
+}
+
+.pms-table > thead > tr > th {
+  background: var(--pms-color-bg);
+  font-weight: 600;
+}
+
+.pms-paging {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-block-start: 1rem;
+}
+
+.pms-empty {
+  padding-block: 2rem;
+  padding-inline: 1rem;
+  text-align: center;
+  color: var(--pms-color-muted);
+}
