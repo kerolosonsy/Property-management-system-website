@@ -7,28 +7,37 @@ import (
 
 	"pms/internal/auth"
 	"pms/internal/config"
+	pmscrypto "pms/internal/crypto"
 	"pms/internal/identity"
+	"pms/internal/properties"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Server bundles the dependencies the HTTP handlers need.
 type Server struct {
-	cfg      *config.Config
-	pool     *pgxpool.Pool
-	identity *identity.Store
-	delay    auth.DelaySchedule
+	cfg       *config.Config
+	pool      *pgxpool.Pool
+	identity  *identity.Store
+	properties *properties.Store
+	envelope  *pmscrypto.Envelope
+	delay     auth.DelaySchedule
 }
 
 // auditService is unused at the type level; audit rows are written inline by
 // handlers using audit.Write against the same transaction as the change.
 
-func NewServer(cfg *config.Config, pool *pgxpool.Pool, store *identity.Store) *Server {
+func NewServer(
+	cfg *config.Config, pool *pgxpool.Pool, store *identity.Store,
+	props *properties.Store, env *pmscrypto.Envelope,
+) *Server {
 	return &Server{
-		cfg:      cfg,
-		pool:     pool,
-		identity: store,
-		delay:    auth.DelaySchedule{},
+		cfg:       cfg,
+		pool:      pool,
+		identity:  store,
+		properties: props,
+		envelope:  env,
+		delay:     auth.DelaySchedule{},
 	}
 }
 
@@ -49,13 +58,42 @@ func (s *Server) Routes(genHandler http.Handler) http.Handler {
 	mux.Handle("GET /api/v1/auth/me", s.authed(anyRole, genHandler.ServeHTTP))
 	mux.Handle("POST /api/v1/auth/password", s.authed(anyRole, genHandler.ServeHTTP))
 
-	// Administrator only.
+	// Lookups — read by any signed-in user (filter bar needs them).
+	mux.Handle("GET /api/v1/property-types", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("GET /api/v1/areas", s.authed(anyRole, genHandler.ServeHTTP))
+
+	// Custom field definitions — read by any signed-in user.
+	mux.Handle("GET /api/v1/custom-fields", s.authed(anyRole, genHandler.ServeHTTP))
+
+	// Properties — read by manager, write by manager; PATCH /code is admin.
+	mux.Handle("GET /api/v1/properties", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("POST /api/v1/properties", s.authed(anyRole, genHandler.ServeHTTP))
+	// Search must be registered before the {propertyId} pattern (research D-006).
+	mux.Handle("POST /api/v1/properties/search", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("GET /api/v1/properties/{propertyId}", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("PUT /api/v1/properties/{propertyId}", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("PATCH /api/v1/properties/{propertyId}/code", s.authed(adminRole, genHandler.ServeHTTP))
+	mux.Handle("POST /api/v1/properties/{propertyId}/archive", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("POST /api/v1/properties/{propertyId}/restore", s.authed(anyRole, genHandler.ServeHTTP))
+
+	// Administrator only — accounts, audit records, and the four
+	// configuration write operations on lookups and custom fields.
 	mux.Handle("GET /api/v1/users", s.authed(adminRole, genHandler.ServeHTTP))
 	mux.Handle("POST /api/v1/users", s.authed(adminRole, genHandler.ServeHTTP))
 	mux.Handle("GET /api/v1/users/{userId}", s.authed(adminRole, genHandler.ServeHTTP))
 	mux.Handle("PATCH /api/v1/users/{userId}", s.authed(adminRole, genHandler.ServeHTTP))
 	mux.Handle("POST /api/v1/users/{userId}/password", s.authed(adminRole, genHandler.ServeHTTP))
 	mux.Handle("GET /api/v1/audit-records", s.authed(adminRole, genHandler.ServeHTTP))
+
+	mux.Handle("POST /api/v1/property-types", s.authed(adminRole, genHandler.ServeHTTP))
+	mux.Handle("PUT /api/v1/property-types/{lookupId}", s.authed(adminRole, genHandler.ServeHTTP))
+	mux.Handle("DELETE /api/v1/property-types/{lookupId}", s.authed(adminRole, genHandler.ServeHTTP))
+	mux.Handle("POST /api/v1/areas", s.authed(adminRole, genHandler.ServeHTTP))
+	mux.Handle("PUT /api/v1/areas/{lookupId}", s.authed(adminRole, genHandler.ServeHTTP))
+	mux.Handle("DELETE /api/v1/areas/{lookupId}", s.authed(adminRole, genHandler.ServeHTTP))
+	mux.Handle("POST /api/v1/custom-fields", s.authed(adminRole, genHandler.ServeHTTP))
+	mux.Handle("PUT /api/v1/custom-fields/{fieldId}", s.authed(adminRole, genHandler.ServeHTTP))
+	mux.Handle("DELETE /api/v1/custom-fields/{fieldId}", s.authed(adminRole, genHandler.ServeHTTP))
 
 	return logMiddleware(mux)
 }

@@ -1,11 +1,21 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.1.0
-Bump rationale: MINOR — two new principles added (VII Encryption & Data
-Confidentiality, VIII Auditability) and the Technology & Architecture
-Constraints section materially expanded with key management, TLS, and storage
-requirements. No existing principle was removed or redefined incompatibly.
+Version change: 1.1.0 → 1.2.0
+Bump rationale: MINOR — Principle VII is materially expanded to admit a second,
+bounded route into the encrypted set: fields an administrator designates as
+sensitive at runtime. No principle is removed, and no already-shipped behaviour
+becomes non-compliant: the four named columns keep exactly the rule they had, and
+the fixed set still moves only by amendment.
+
+This bump was weighed against MAJOR. Delegating any part of the encrypted set to a
+runtime decision does change who controls that set, which is close to a
+redefinition. It is recorded as MINOR because the delegation is additive and
+fenced on four sides — free-text fields only, custom fields only, fixed once
+values exist, and stripped of search/sort/filter/report exactly as the built-in
+encrypted columns are. A future amendment that widened administrator designation
+to built-in columns, or that let a designation be revoked over existing data,
+would be MAJOR.
 
 Principles in this version:
   I.    Server-Enforced Authorization (NON-NEGOTIABLE)   [unchanged]
@@ -14,22 +24,31 @@ Principles in this version:
   IV.   Relational Integrity & Money Safety              [unchanged]
   V.    Manual Verification Discipline                   [unchanged]
   VI.   Simplicity & Surgical Change                     [unchanged]
-  VII.  Encryption & Data Confidentiality (NON-NEGOTIABLE)   [ADDED in 1.1.0]
-  VIII. Auditability                                         [ADDED in 1.1.0]
+  VII.  Encryption & Data Confidentiality (NON-NEGOTIABLE)   [EXPANDED in 1.2.0]
+  VIII. Auditability                                         [unchanged]
 
 Sections modified:
-  - Technology & Architecture Constraints — added encryption/key-management,
-    TLS, and attachment storage requirements; TLS is now required in local dev.
-  - Development Workflow & Quality Gates — added encryption and audit task
-    requirements to step 3.
-  - Governance — compliance review now covers Principles VII and VIII.
+  - Principle VII, "Database fields" — split into encryption fixed by this
+    document and encryption designated by an administrator, with the four bounds
+    on designation, and the exclusion of designated fields from search, sort,
+    filter, and report.
+  - Principle VII, rationale — extended to explain why the delegation exists and
+    why it is fenced.
+  - Development Workflow & Quality Gates, step 3 — a feature storing designated
+    sensitive fields now requires an encryption task and a search-exclusion task.
+
+Driven by: feature 002-properties-crud, whose administrator-defined custom fields
+would otherwise have offered a plaintext, searchable home for exactly the four
+identifiers this principle exists to protect.
 
 Templates requiring updates:
-  ✅ .specify/templates/plan-template.md — Constitution Check extended with
-     gates VII and VIII.
+  ✅ .specify/templates/plan-template.md — gate VII extended; version reference
+     updated to 1.2.0.
   ✅ .specify/templates/spec-template.md — no change required.
-  ✅ .specify/templates/tasks-template.md — no change required.
-  ✅ AGENTS.md / CLAUDE.md — no change required.
+  ✅ .specify/templates/tasks-template.md — no change required; the new task
+     obligation lives in the Development Workflow section above.
+  ✅ AGENTS.md — version reference updated to 1.2.0.
+  ✅ CLAUDE.md — version reference updated to 1.2.0.
 
 Deferred TODOs: none.
 -->
@@ -188,16 +207,38 @@ maintenance photo, report export) MUST be encrypted at rest. No exceptions, no
   failure is a hard error; partial or unauthenticated content MUST NOT be
   returned.
 
-**Database fields** — column-level encryption applies to identity and financial
-identifiers:
+**Database fields** — encryption at the column and value level applies to identity
+and financial identifiers, and to fields an administrator designates:
 
-- **Encrypted**: national ID, passport number, bank account number, IBAN.
+- **Encrypted by this document (the fixed set)**: national ID, passport number,
+  bank account number, IBAN. Adding a built-in column to this set is a
+  **constitution amendment**, not an implementation detail, because it removes
+  that column from every search, sort, filter, and report.
+- **Encrypted by administrator designation**: a free-text custom field that an
+  administrator marks sensitive. This is the only encryption decision this
+  document delegates to runtime, and it is bounded on four sides:
+  - Only **free-text** fields MAY be designated. A field whose value comes from a
+    published list of choices MUST NOT be, because encrypting a value an attacker
+    can enumerate from that list conceals nothing.
+  - Only **administrator-defined custom fields** MAY be designated. Built-in
+    columns move into or out of the fixed set by amendment only.
+  - Designation is **fixed at definition time** and MUST NOT change in either
+    direction once any record holds a value for that field.
+  - A designated field carries the **same consequence** as the fixed set: it MUST
+    be excluded from search, sort, filter, and report, and the interface MUST say
+    so in Arabic rather than silently omitting it.
+- A designated field's values MUST use the AES-256-GCM envelope scheme required
+  for attachments above: the KEK comes from the environment and MUST NOT encrypt
+  a value directly, the wrapped data key and nonce are stored alongside the
+  ciphertext, and the authentication tag MUST be verified on every read. The
+  granularity of the data key is a design decision for the feature's plan.
+- Any screen that defines custom fields MUST state that national ID, passport,
+  bank account, and IBAN values belong in a designated field. An administrator who
+  records one of those four in an undesignated field violates this principle; the
+  system states the rule, and the audit trail records who defined the field.
 - **Plaintext, deliberately**: names, phone numbers, email addresses, physical
   addresses — because managers must search and report on them, and Principle IV
   reports must remain possible.
-- Adding a field to the encrypted set is a **constitution amendment**, not an
-  implementation detail, because it removes that field from every search, sort,
-  filter, and report.
 - Decryption happens only inside a handler that has already passed a role check.
   Decrypted values MUST NOT appear in logs, error messages, or audit records.
 
@@ -220,6 +261,14 @@ identifiers:
 laptop and nothing else. Envelope encryption with the key outside the database
 means a leaked dump is inert. The plaintext exceptions are named explicitly so
 the trade is visible rather than discovered later at a broken report screen.
+
+Administrator designation exists because a system that lets administrators invent
+their own fields cannot enumerate in advance what they will put in them. Refusing
+to encrypt anything an administrator defines would hand them a plaintext,
+searchable home for exactly the four identifiers this principle protects; encrypting
+everything they define would break the search those fields are for. Designation
+puts the choice where the knowledge is, and the four bounds keep it from becoming a
+general licence to move the encryption line at runtime.
 
 ### VIII. Auditability
 
@@ -299,8 +348,10 @@ specs/       # Spec Kit feature specifications, plans, and tasks
    MUST include an OpenAPI task before its handler tasks. A feature touching the
    UI MUST include an RTL/Arabic task. A feature touching the schema MUST include
    a migration task. A feature accepting file uploads MUST include an encryption
-   task and an attachment-access audit task. A feature writing business records
-   MUST include an audit task.
+   task and an attachment-access audit task. A feature that stores
+   administrator-designated sensitive fields MUST include an encryption task and a
+   task that excludes those fields from every search, sort, filter, and report. A
+   feature writing business records MUST include an audit task.
 4. **Implement** — code is written only after the above artifacts exist.
 5. **Verify** — the manual procedure from `quickstart.md` is executed and its
    result recorded before the feature is closed. For any feature handling
@@ -341,4 +392,4 @@ Complexity that violates Principle VI MUST be justified in writing or removed.
 dependencies) lives in the active feature's `plan.md`, as directed by
 `AGENTS.md` and `CLAUDE.md`. This constitution governs; the plan instructs.
 
-**Version**: 1.1.0 | **Ratified**: 2026-08-29 | **Last Amended**: 2026-08-29
+**Version**: 1.2.0 | **Ratified**: 2026-08-29 | **Last Amended**: 2026-08-30

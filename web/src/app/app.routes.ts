@@ -60,7 +60,49 @@ export const routes: Routes = [
         path: 'records',
         loadComponent: () => import('./features/records/records.component').then(m => m.RecordsComponent),
       },
+      {
+        path: 'property-types',
+        loadComponent: () => import('./features/settings/property-types/property-types.component').then(m => m.PropertyTypesComponent),
+      },
+      {
+        path: 'areas',
+        loadComponent: () => import('./features/settings/areas/areas.component').then(m => m.AreasComponent),
+      },
+      {
+        path: 'custom-fields',
+        loadComponent: () => import('./features/settings/custom-fields/custom-fields.component').then(m => m.CustomFieldsComponent),
+      },
     ],
+  },
+
+  // Properties — visible to all signed-in users (manager and admin).
+  // The /search and /:id branches below must register before the wildcard
+  // sibling route so the static path is matched first (Constitution II /
+  // research.md D-006).
+  {
+    path: 'properties',
+    canActivate: [requireSignedInGuard, requirePasswordChangedGuard],
+    loadComponent: () => import('./features/properties/properties-list.component').then(m => m.PropertiesListComponent),
+  },
+  {
+    path: 'properties/search',
+    canActivate: [requireSignedInGuard, requirePasswordChangedGuard],
+    loadComponent: () => import('./features/properties/advanced-search.component').then(m => m.AdvancedSearchComponent),
+  },
+  {
+    path: 'properties/new',
+    canActivate: [requireSignedInGuard, requirePasswordChangedGuard],
+    loadComponent: () => import('./features/properties/property-form.component').then(m => m.PropertyFormComponent),
+  },
+  {
+    path: 'properties/:propertyId/edit',
+    canActivate: [requireSignedInGuard, requirePasswordChangedGuard],
+    loadComponent: () => import('./features/properties/property-form.component').then(m => m.PropertyFormComponent),
+  },
+  {
+    path: 'properties/:propertyId',
+    canActivate: [requireSignedInGuard, requirePasswordChangedGuard],
+    loadComponent: () => import('./features/properties/property-detail.component').then(m => m.PropertyDetailComponent),
   },
 
   // Old top-level paths kept as redirects so existing links and bookmarks do

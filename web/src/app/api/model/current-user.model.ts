@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -11,7 +11,7 @@ import { Role } from './role.model';
 
 
 /**
- * The caller as they stand on this request. `mustChangePassword` true means the client must send the user to the password-change screen and no other (FR-007, FR-010). 
+ * The caller as they stand on this request. `mustChangePassword` true means the client must send the user to the password-change screen and no other. 
  */
 export interface CurrentUser { 
     id: string;

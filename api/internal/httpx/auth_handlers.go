@@ -73,12 +73,15 @@ func (s *Server) handleSignIn() http.Handler {
 		// Identical refusal for unknown username, wrong password, deactivated account (FR-013).
 		if acct == nil {
 			_ = s.delay.RecordFailure(r.Context(), tx, canonical)
-			_ = audit.Write(r.Context(), tx, audit.Entry{
+			if err := audit.Write(r.Context(), tx, audit.Entry{
 				Action:        audit.SignInFailed,
 				ActorUsername: body.Username,
 				SourceIP:      ip,
 				Detail:        map[string]string{"reason": "unknown_user"},
-			})
+			}); err != nil {
+				refuseInternal(w, err)
+				return
+			}
 			if err := tx.Commit(r.Context()); err != nil {
 				refuseInternal(w, err)
 				return
@@ -89,14 +92,17 @@ func (s *Server) handleSignIn() http.Handler {
 
 		if err := auth.VerifyPassword(body.Password, acct.PasswordHash); err != nil {
 			_ = s.delay.RecordFailure(r.Context(), tx, canonical)
-			_ = audit.Write(r.Context(), tx, audit.Entry{
+			if err := audit.Write(r.Context(), tx, audit.Entry{
 				Action:        audit.SignInFailed,
 				ActorAccountID: &acct.ID,
 				ActorUsername:  acct.Username,
 				ActorRole:      rolePtr(acct.Role),
 				SourceIP:       ip,
 				Detail:         map[string]string{"reason": "bad_password"},
-			})
+			}); err != nil {
+				refuseInternal(w, err)
+				return
+			}
 			if err := tx.Commit(r.Context()); err != nil {
 				refuseInternal(w, err)
 				return
@@ -106,14 +112,17 @@ func (s *Server) handleSignIn() http.Handler {
 		}
 
 		if !acct.IsActive {
-			_ = audit.Write(r.Context(), tx, audit.Entry{
+			if err := audit.Write(r.Context(), tx, audit.Entry{
 				Action:        audit.SignInFailed,
 				ActorAccountID: &acct.ID,
 				ActorUsername:  acct.Username,
 				ActorRole:      rolePtr(acct.Role),
 				SourceIP:       ip,
 				Detail:         map[string]string{"reason": "deactivated"},
-			})
+			}); err != nil {
+				refuseInternal(w, err)
+				return
+			}
 			if err := tx.Commit(r.Context()); err != nil {
 				refuseInternal(w, err)
 				return
@@ -132,13 +141,16 @@ func (s *Server) handleSignIn() http.Handler {
 
 		actorID := acct.ID
 		actorRole := acct.Role
-		_ = audit.Write(r.Context(), tx, audit.Entry{
+		if err := audit.Write(r.Context(), tx, audit.Entry{
 			Action:        audit.SignInSucceeded,
 			ActorAccountID: &actorID,
 			ActorUsername:  acct.Username,
 			ActorRole:      &actorRole,
 			SourceIP:       ip,
-		})
+		}); err != nil {
+			refuseInternal(w, err)
+			return
+		}
 		if err := tx.Commit(r.Context()); err != nil {
 			refuseInternal(w, err)
 			return

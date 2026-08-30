@@ -408,3 +408,124 @@ a:hover { text-decoration: underline; }
   // with the layout's.
   .pms-page { padding: 0; max-inline-size: none; }
 }
+
+// ── Segmented control ──────────────────────────────────────────────────────
+// Vendored from the design source, which uses it for the property-type filter.
+// Its own rule sets `border-left`; converted to `border-inline-start` here so
+// mirroring is structural rather than patched per direction (Constitution II).
+
+.seg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+
+.seg-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  border-inline-start: 1px solid var(--color-divider);
+
+  &:first-child {
+    border-inline-start: none;
+  }
+
+  // The design marks the active option with the accent pair.
+  &:has(input:checked) {
+    background: var(--color-accent-100);
+    color: var(--color-accent-800);
+  }
+}
+
+// ── Section head ───────────────────────────────────────────────────────────
+// The design's h2 + result-count line that sits above the table card.
+
+.pms-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-block-end: var(--space-4);
+
+  h2 { margin: 0; font-size: 20px; }
+}
+
+.pms-section-count {
+  font-size: 12px;
+  opacity: 0.55;
+  margin-block-start: 2px;
+}
+
+// ── Joined search group ────────────────────────────────────────────────────
+// The design joins the search field to the advanced-search button into one
+// control. Radii are logical, so the seam lands on the correct side under RTL.
+
+.pms-searchgroup {
+  display: flex;
+  align-items: stretch;
+
+  .field {
+    inline-size: 260px;
+    margin: 0;
+  }
+
+  .input {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+  }
+
+  .btn {
+    border-inline-start: none;
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+  }
+}
+
+// ── Flush card ─────────────────────────────────────────────────────────────
+// The design's table card is `padding:0;overflow:hidden` so the table meets
+// the card edge. Filter rows inside it supply their own padding.
+
+.pms-card-flush {
+  padding: 0;
+  overflow: hidden;
+
+  .pms-filters { padding: var(--space-4) var(--space-4) 0; }
+  .pms-empty,
+  .pms-error-banner,
+  .pms-paging { padding-inline: var(--space-4); }
+}
+
+// The design's content band below the view header.
+.pms-section-body {
+  padding: var(--space-6) var(--space-6) var(--space-8);
+}
+
+// ── Per-column filter row ──────────────────────────────────────────────────
+// The design source puts a second header row of small controls under the
+// column labels. Sizes are its own.
+
+.pms-colfilter th {
+  padding: 6px var(--space-2);
+}
+
+.pms-colfilter .input {
+  inline-size: 100%;
+  font-size: 12px;
+  min-block-size: 28px;
+  padding: 4px 8px;
+}
+
+// Empty-result row inside the table, so the column filters above it survive.
+.pms-empty-cell {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-neutral-600);
+}
+
+.pms-clear-inline {
+  margin-inline-start: var(--space-3);
+}

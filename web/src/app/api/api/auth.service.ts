@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -51,7 +51,7 @@ export class AuthService extends BaseService {
 
     /**
      * Change your own password
-     * Requires the current password (FR-011). On success every session belonging to the account is revoked, including this one, and the caller must sign in again (FR-020). 
+     * Requires the current password. On success every session belonging to the account is revoked, including this one, and the caller must sign in again. 
      * @endpoint post /auth/password
      * @param requestParameters
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -121,7 +121,7 @@ export class AuthService extends BaseService {
 
     /**
      * The signed-in account as it stands right now
-     * Reads role and active state from stored data on each call, so a demotion or deactivation is reflected on the next request without signing out (FR-034, FR-035). 
+     * Reads role and active state from stored data on each call, so a demotion or deactivation is reflected on the next request without signing out. 
      * @endpoint get /auth/me
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -176,7 +176,7 @@ export class AuthService extends BaseService {
 
     /**
      * Sign in
-     * Verifies a username and password and issues a session cookie.  The refusal for an unknown username, a wrong password, and a deactivated account is byte-identical (FR-013). Repeated failures impose a growing wait that applies equally to usernames that do not exist (FR-014, FR-040); while a wait is outstanding the attempt is refused as &#x60;too_soon&#x60; even if the password is correct (FR-015). 
+     * Verifies a username and password and issues a session cookie.  The refusal for an unknown username, a wrong password, and a deactivated account is byte-identical. Repeated failures impose a growing wait that applies equally to usernames that do not exist; while a wait is outstanding the attempt is refused as &#x60;too_soon&#x60; even if the password is correct. 
      * @endpoint post /auth/login
      * @param requestParameters
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -244,7 +244,7 @@ export class AuthService extends BaseService {
 
     /**
      * Sign out
-     * Revokes the current session immediately (FR-019).
+     * Revokes the current session immediately.
      * @endpoint post /auth/logout
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.

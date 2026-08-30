@@ -1,9 +1,17 @@
 export * from './auth.service';
 import { AuthService } from './auth.service';
+export * from './custom-fields.service';
+import { CustomFieldsService } from './custom-fields.service';
+export * from './lookups.service';
+import { LookupsService } from './lookups.service';
+export * from './properties.service';
+import { PropertiesService } from './properties.service';
 export * from './records.service';
 import { RecordsService } from './records.service';
+export * from './search.service';
+import { SearchService } from './search.service';
 export * from './system.service';
 import { SystemService } from './system.service';
 export * from './users.service';
 import { UsersService } from './users.service';
-export const APIS = [AuthService, RecordsService, SystemService, UsersService];
+export const APIS = [AuthService, CustomFieldsService, LookupsService, PropertiesService, RecordsService, SearchService, SystemService, UsersService];

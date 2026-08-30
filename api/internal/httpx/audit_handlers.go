@@ -109,6 +109,16 @@ func (s *Server) handleListAuditRecords() http.Handler {
 			} else {
 				rec["actorRole"] = nil
 			}
+			if r.EntityType != nil {
+				rec["entityType"] = string(*r.EntityType)
+			} else {
+				rec["entityType"] = nil
+			}
+			if r.EntityID != nil {
+				rec["entityId"] = *r.EntityID
+			} else {
+				rec["entityId"] = nil
+			}
 			if r.TargetID != nil {
 				rec["targetId"] = r.TargetID.String()
 			} else {

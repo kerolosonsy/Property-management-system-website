@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -33,6 +33,9 @@ export namespace SignIn429Response {
         Forbidden: 'forbidden',
         NotFound: 'not_found',
         Conflict: 'conflict',
+        InUse: 'in_use',
+        VersionConflict: 'version_conflict',
+        Archived: 'archived',
         PasswordChangeRequired: 'password_change_required',
         InternalError: 'internal_error',
     } as const;

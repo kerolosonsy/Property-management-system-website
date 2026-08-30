@@ -150,7 +150,7 @@ func (s *Server) handleCreateUser() http.Handler {
 
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
-		_ = audit.Write(r.Context(), tx, audit.Entry{
+		if err := audit.Write(r.Context(), tx, audit.Entry{
 			Action:         audit.AccountCreated,
 			ActorAccountID: &actorID,
 			ActorUsername:  c.Account.Username,
@@ -158,7 +158,10 @@ func (s *Server) handleCreateUser() http.Handler {
 			TargetAccountID: &newAcct.ID,
 			TargetUsername:  strPtr(newAcct.Username),
 			SourceIP:       ClientIP(r),
-		})
+		}); err != nil {
+			refuseInternal(w, err)
+			return
+		}
 		if err := tx.Commit(r.Context()); err != nil {
 			refuseInternal(w, err)
 			return
@@ -319,7 +322,7 @@ func (s *Server) handleUpdateUser() http.Handler {
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
 		if body.Role != nil && *body.Role != current.Role {
-			_ = audit.Write(r.Context(), tx, audit.Entry{
+			if err := audit.Write(r.Context(), tx, audit.Entry{
 				Action:         audit.AccountRoleChanged,
 				ActorAccountID: &actorID,
 				ActorUsername:  c.Account.Username,
@@ -331,14 +334,17 @@ func (s *Server) handleUpdateUser() http.Handler {
 					"from": current.Role,
 					"to":   *body.Role,
 				},
-			})
+			}); err != nil {
+				refuseInternal(w, err)
+				return
+			}
 		}
 		if body.IsActive != nil && *body.IsActive != current.IsActive {
 			action := audit.AccountActivated
 			if !*body.IsActive {
 				action = audit.AccountDeactivated
 			}
-			_ = audit.Write(r.Context(), tx, audit.Entry{
+			if err := audit.Write(r.Context(), tx, audit.Entry{
 				Action:         action,
 				ActorAccountID: &actorID,
 				ActorUsername:  c.Account.Username,
@@ -346,14 +352,17 @@ func (s *Server) handleUpdateUser() http.Handler {
 				TargetAccountID: &updated.ID,
 				TargetUsername:  strPtr(updated.Username),
 				SourceIP:       ClientIP(r),
-			})
+			}); err != nil {
+				refuseInternal(w, err)
+				return
+			}
 			// Deactivation revokes every session for the account (FR-020).
 			if !*body.IsActive {
 				if err := auth.RevokeAllForAccount(r.Context(), tx, updated.ID); err != nil {
 					refuseInternal(w, err)
 					return
 				}
-				_ = audit.Write(r.Context(), tx, audit.Entry{
+				if err := audit.Write(r.Context(), tx, audit.Entry{
 					Action:         audit.SessionsInvalidated,
 					ActorAccountID: &actorID,
 					ActorUsername:  c.Account.Username,
@@ -361,7 +370,10 @@ func (s *Server) handleUpdateUser() http.Handler {
 					TargetAccountID: &updated.ID,
 					TargetUsername:  strPtr(updated.Username),
 					SourceIP:       ClientIP(r),
-				})
+				}); err != nil {
+					refuseInternal(w, err)
+					return
+				}
 			}
 		}
 
@@ -447,7 +459,7 @@ func (s *Server) handleResetUserPassword() http.Handler {
 
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
-		_ = audit.Write(r.Context(), tx, audit.Entry{
+		if err := audit.Write(r.Context(), tx, audit.Entry{
 			Action:         audit.PasswordReset,
 			ActorAccountID: &actorID,
 			ActorUsername:  c.Account.Username,
@@ -455,8 +467,11 @@ func (s *Server) handleResetUserPassword() http.Handler {
 			TargetAccountID: &target.ID,
 			TargetUsername:  strPtr(target.Username),
 			SourceIP:       ClientIP(r),
-		})
-		_ = audit.Write(r.Context(), tx, audit.Entry{
+		}); err != nil {
+			refuseInternal(w, err)
+			return
+		}
+		if err := audit.Write(r.Context(), tx, audit.Entry{
 			Action:         audit.SessionsInvalidated,
 			ActorAccountID: &actorID,
 			ActorUsername:  c.Account.Username,
@@ -464,7 +479,10 @@ func (s *Server) handleResetUserPassword() http.Handler {
 			TargetAccountID: &target.ID,
 			TargetUsername:  strPtr(target.Username),
 			SourceIP:       ClientIP(r),
-		})
+		}); err != nil {
+			refuseInternal(w, err)
+			return
+		}
 		if err := tx.Commit(r.Context()); err != nil {
 			refuseInternal(w, err)
 			return

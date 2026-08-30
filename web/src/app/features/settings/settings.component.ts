@@ -1,7 +1,8 @@
 // web/src/app/features/settings/settings.component.ts
-// Settings is the administrator's area. Accounts (US2) and the records view
-// (US4) are its two sections; each keeps its own URL so a link or a refresh
-// lands where it should.
+// Settings is the administrator's area. Accounts (US2), the records view
+// (US4), and the three configuration screens of feature 002 (property types,
+// areas, custom fields) are its sections; each keeps its own URL so a link or
+// a refresh lands where it should.
 //
 // The section list and the administrator-only nav entry are presentation.
 // Every endpoint behind them is refused for a manager by the server regardless
@@ -28,6 +29,9 @@ import { ARABIC_MESSAGES } from '../../shared/messages';
       <nav class="pms-subnav">
         <a routerLink="users" routerLinkActive="is-current">{{ msgs.usersList }}</a>
         <a routerLink="records" routerLinkActive="is-current">{{ msgs.recordsList }}</a>
+        <a routerLink="property-types" routerLinkActive="is-current">{{ msgs.propertyTypes }}</a>
+        <a routerLink="areas" routerLinkActive="is-current">{{ msgs.areas }}</a>
+        <a routerLink="custom-fields" routerLinkActive="is-current">{{ msgs.customFields }}</a>
       </nav>
       <div class="pms-subnav-body">
         <router-outlet></router-outlet>

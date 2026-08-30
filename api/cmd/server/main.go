@@ -15,10 +15,12 @@ import (
 
 	"pms/internal/auth"
 	"pms/internal/config"
+	pmscrypto "pms/internal/crypto"
 	"pms/internal/db"
 	"pms/internal/gen"
 	"pms/internal/httpx"
 	"pms/internal/identity"
+	"pms/internal/properties"
 )
 
 func main() {
@@ -40,8 +42,14 @@ func main() {
 	}
 	defer pool.Close()
 
-	store := &identity.Store{Pool: pool}
-	srv := httpx.NewServer(cfg, pool, store)
+	identityStore := &identity.Store{Pool: pool}
+	propertiesStore := &properties.Store{}
+	envelope, err := pmscrypto.New(cfg.FieldKEK)
+	if err != nil {
+		slog.Error("envelope init failed", "err", err)
+		os.Exit(1)
+	}
+	srv := httpx.NewServer(cfg, pool, identityStore, propertiesStore, envelope)
 
 	// The generated handler registers routes with the OpenAPI base path
 	// (here /api/v1) on its own mux; pass BaseURL so the patterns match the

@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -69,7 +69,7 @@ export class UsersService extends BaseService {
 
     /**
      * Create an account
-     * There is no self-registration; only an administrator reaches this operation (FR-006). The new account must change its password at first sign-in (FR-010). A username that canonicalizes to an existing one is refused as already in use (FR-038). 
+     * There is no self-registration; only an administrator reaches this operation. The new account must change its password at first sign-in. A username that canonicalizes to an existing one is refused as already in use. 
      * @endpoint post /users
      * @param requestParameters
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -286,7 +286,7 @@ export class UsersService extends BaseService {
 
     /**
      * Reset another account\&#39;s password
-     * Administrator only (FR-012). The account must change the password at its next sign-in, and all its sessions are revoked (FR-010, FR-020). The current password is not required and is never readable (FR-008). 
+     * Administrator only. The account must change the password at its next sign-in, and all its sessions are revoked. The current password is not required and is never readable. 
      * @endpoint post /users/{userId}/password
      * @param requestParameters
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -360,7 +360,7 @@ export class UsersService extends BaseService {
 
     /**
      * Change display name, role, or active state
-     * A role change takes effect on the affected user\&#39;s next request and does not end their session (FR-035). Deactivation revokes every session belonging to the account (FR-020).  Refused when the change would leave no active administrator, and when an administrator targets their own account for demotion or deactivation. 
+     * A role change takes effect on the affected user\&#39;s next request and does not end their session. Deactivation revokes every session belonging to the account.  Refused when the change would leave no active administrator, and when an administrator targets their own account for demotion or deactivation. 
      * @endpoint patch /users/{userId}
      * @param requestParameters
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

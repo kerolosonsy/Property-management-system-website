@@ -12,6 +12,7 @@
 #   run-api    start the Go API (TLS only, no plaintext listener exists)
 #   run-web    start the Angular development server (TLS, self-signed)
 #   seed-admin create the initial administrator account
+#   seed-demo  insert the six design properties for manual verification
 #   test       run the two pieces of unit-tested logic
 #   env-check  show which required variables are set, without printing values
 
@@ -33,10 +34,10 @@ COMPOSE := docker compose -f "$(ROOT)/infra/docker-compose.yml"
 # Targets that need credentials prefix their recipe with $(LOAD_ENV).
 LOAD_ENV = set -a; if [ -f "$(ENV_FILE)" ]; then . "$(ENV_FILE)"; fi; set +a;
 
-.PHONY: help certs db-up db-down migrate generate run-api run-web seed-admin test clean env-check
+.PHONY: help certs db-up db-down migrate generate run-api run-web seed-admin seed-demo reset-admin-dev test clean env-check
 
 help:
-	@echo "Targets: certs, db-up, db-down, migrate, generate, run-api, run-web, seed-admin, test, env-check, clean"
+	@echo "Targets: certs, db-up, db-down, migrate, generate, run-api, run-web, seed-admin, seed-demo, reset-admin-dev, test, env-check, clean"
 
 env-check:
 	@$(LOAD_ENV) \
@@ -44,6 +45,16 @@ env-check:
 	for v in PMS_DATABASE_APP_URL PMS_DATABASE_OWNER_URL PMS_TLS_CERT_PATH PMS_TLS_KEY_PATH; do \
 		if [ -z "$${!v}" ]; then echo "  MISSING  $$v"; missing=1; else echo "  set      $$v"; fi; \
 	done; \
+	if [ -z "$$PMS_KEK" ]; then \
+		echo "  MISSING  PMS_KEK (Constitution VII)"; missing=1; \
+	else \
+		decoded="$$(printf '%s' "$$PMS_KEK" | base64 -d 2>/dev/null | wc -c | tr -d ' ')"; \
+		if [ "$$decoded" = "32" ]; then \
+			echo "  set      PMS_KEK (32 bytes)"; \
+		else \
+			echo "  WRONG    PMS_KEK (decodes to $$decoded bytes; need 32)"; missing=1; \
+		fi; \
+	fi; \
 	if [ ! -f "$(ENV_FILE)" ]; then \
 		echo; echo "No .env found. Copy .env.example to .env and fill it in."; exit 1; \
 	fi; \
@@ -98,6 +109,31 @@ run-web:
 seed-admin:
 	@$(LOAD_ENV) \
 	cd "$(API_DIR)" && go run ./cmd/admintool seed-admin --username "$${SEED_USERNAME:-admin}"
+
+# Local development only. Resets the admin password to DEV_ADMIN_PASSWORD from .env and
+# clears the change-on-next-sign-in requirement, so the account is usable immediately.
+# The password lives in .env (gitignored), never in this file: Constitution VII forbids
+# committing a secret, "not even a development value". It is passed by environment
+# variable name rather than as a flag, because a flag value shows up in `ps` and shell
+# history. This target must never be run against anything but a local database.
+reset-admin-dev:
+	@$(LOAD_ENV) \
+	if [ -z "$${DEV_ADMIN_PASSWORD:-}" ]; then \
+		echo "DEV_ADMIN_PASSWORD is not set in .env — add it there (it is gitignored)."; \
+		exit 1; \
+	fi; \
+	cd "$(API_DIR)" && DEV_ADMIN_PASSWORD="$$DEV_ADMIN_PASSWORD" go run ./cmd/admintool reset-admin \
+		--username "$${SEED_USERNAME:-admin}" \
+		--password-env DEV_ADMIN_PASSWORD \
+		--must-change=false
+	@echo "admin password reset from DEV_ADMIN_PASSWORD; no change required at next sign-in"
+
+seed-demo:
+	@$(LOAD_ENV) \
+	if [ -z "$$PMS_DATABASE_OWNER_URL" ]; then \
+		echo "PMS_DATABASE_OWNER_URL must be set (owner role only). Run 'make env-check'."; exit 1; \
+	fi; \
+	cd "$(API_DIR)" && go run ./cmd/admintool seed-demo
 
 test:
 	cd "$(API_DIR)" && go test ./internal/identity/... ./internal/auth/...

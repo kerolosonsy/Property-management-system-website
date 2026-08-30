@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -12,7 +12,7 @@ import { AuditAction } from './audit-action.model';
 
 
 /**
- * A record is never rewritten. The snapshot fields show accounts as they were named when the action happened, even if renamed since. Never contains a password or any decrypted value (FR-025). 
+ * A record is never rewritten. The snapshot fields show accounts as they were named when the action happened, even if renamed since. Never contains a password, a decrypted value, a key, or a wrapped key (Constitution VII). 
  */
 export interface AuditRecord { 
     id: number;
@@ -24,6 +24,14 @@ export interface AuditRecord {
     actorId?: string | null;
     actorUsername: string;
     actorRole?: Role | null;
+    /**
+     * The kind of business record this row concerns, when any.
+     */
+    entityType?: AuditRecord.EntityTypeEnum | null;
+    /**
+     * The identifier of that record (a reference code for a property).
+     */
+    entityId?: string | null;
     targetId?: string | null;
     targetUsername?: string | null;
     sourceIp: string;
@@ -33,6 +41,13 @@ export interface AuditRecord {
     detail?: { [key: string]: any; } | null;
 }
 export namespace AuditRecord {
+    export const EntityTypeEnum = {
+        Property: 'property',
+        PropertyType: 'property_type',
+        Area: 'area',
+        CustomField: 'custom_field',
+    } as const;
+    export type EntityTypeEnum = typeof EntityTypeEnum[keyof typeof EntityTypeEnum];
 }
 
 

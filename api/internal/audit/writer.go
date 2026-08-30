@@ -18,17 +18,42 @@ import (
 type Action string
 
 const (
-	SignInSucceeded    Action = "sign_in_succeeded"
-	SignInFailed       Action = "sign_in_failed"
-	SignOut            Action = "sign_out"
-	PasswordChanged    Action = "password_changed"
-	PasswordReset      Action = "password_reset"
-	AccountCreated     Action = "account_created"
-	AccountRoleChanged Action = "account_role_changed"
-	AccountActivated   Action = "account_activated"
-	AccountDeactivated Action = "account_deactivated"
+	SignInSucceeded     Action = "sign_in_succeeded"
+	SignInFailed        Action = "sign_in_failed"
+	SignOut             Action = "sign_out"
+	PasswordChanged     Action = "password_changed"
+	PasswordReset       Action = "password_reset"
+	AccountCreated      Action = "account_created"
+	AccountRoleChanged  Action = "account_role_changed"
+	AccountActivated    Action = "account_activated"
+	AccountDeactivated  Action = "account_deactivated"
 	SessionsInvalidated Action = "sessions_invalidated"
-	AdminRecoveryUsed  Action = "admin_recovery_used"
+	AdminRecoveryUsed   Action = "admin_recovery_used"
+
+	PropertyCreated           Action = "property_created"
+	PropertyModified          Action = "property_modified"
+	PropertyArchived          Action = "property_archived"
+	PropertyRestored          Action = "property_restored"
+	PropertyCodeChanged       Action = "property_code_changed"
+	LookupCreated             Action = "lookup_created"
+	LookupRenamed             Action = "lookup_renamed"
+	LookupRemoved             Action = "lookup_removed"
+	CustomFieldCreated        Action = "custom_field_created"
+	CustomFieldRenamed        Action = "custom_field_renamed"
+	CustomFieldRemoved        Action = "custom_field_removed"
+	CustomFieldChoiceAdded    Action = "custom_field_choice_added"
+	CustomFieldChoiceRemoved  Action = "custom_field_choice_removed"
+)
+
+// EntityType names the business record a row concerns. The values mirror the
+// audit_entity enum created by migration 0009.
+type EntityType string
+
+const (
+	EntityProperty     EntityType = "property"
+	EntityPropertyType EntityType = "property_type"
+	EntityArea         EntityType = "area"
+	EntityCustomField  EntityType = "custom_field"
 )
 
 type Entry struct {
@@ -36,6 +61,8 @@ type Entry struct {
 	ActorAccountID  *uuid.UUID
 	ActorUsername   string
 	ActorRole       *string
+	EntityType      EntityType
+	EntityID        string
 	TargetAccountID *uuid.UUID
 	TargetUsername  *string
 	SourceIP        string
@@ -43,7 +70,14 @@ type Entry struct {
 }
 
 // Write appends the entry to audit_log. The caller's pgx.Tx commits or rolls
-// back the change together with the audit row.
+// back the change together with the audit row. Constitution VIII: an audit
+// failure must roll back the change it records.
+//
+// Callers MUST check the returned error and MUST NOT call tx.Commit when it is
+// non-nil — the underlying audit row is the only durable proof that the change
+// happened, so a failed write must take the change with it. Discarding the
+// error (the historical `_ = audit.Write(...)` pattern) leaves the change
+// committed with no audit trail and violates FR-029.
 func Write(ctx context.Context, tx pgx.Tx, e Entry) error {
 	var detailJSON []byte
 	if e.Detail != nil {
@@ -57,20 +91,31 @@ func Write(ctx context.Context, tx pgx.Tx, e Entry) error {
 	if e.ActorRole != nil {
 		actorRole = *e.ActorRole
 	}
+	var entityType any
+	if e.EntityType != "" {
+		entityType = string(e.EntityType)
+	}
+	var entityID any
+	if e.EntityID != "" {
+		entityID = e.EntityID
+	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO audit_log (
 			occurred_at, action,
 			actor_account_id, actor_username_snapshot, actor_role,
+			entity_type, entity_id,
 			target_account_id, target_username_snapshot,
 			source_ip, detail
 		) VALUES (
 			now(), $1,
 			$2, $3, $4,
 			$5, $6,
-			$7, $8
+			$7, $8,
+			$9, $10
 		)`,
 		string(e.Action),
 		e.ActorAccountID, e.ActorUsername, actorRole,
+		entityType, entityID,
 		e.TargetAccountID, e.TargetUsername,
 		e.SourceIP, detailJSON,
 	)
@@ -84,6 +129,8 @@ type Record struct {
 	ActorID         *uuid.UUID
 	ActorUsername   string
 	ActorRole       *string
+	EntityType      *EntityType
+	EntityID        *string
 	TargetID        *uuid.UUID
 	TargetUsername  *string
 	SourceIP        netip.Addr
@@ -147,6 +194,7 @@ func Query(ctx context.Context, pool *pgxpool.Pool, f Filters) ([]Record, int, e
 	rows, err := pool.Query(ctx, `
 		SELECT id, occurred_at, action,
 		       actor_account_id, actor_username_snapshot, actor_role,
+		       entity_type, entity_id,
 		       target_account_id, target_username_snapshot,
 		       source_ip, detail
 		FROM audit_log WHERE `+whereSQL+`
@@ -162,6 +210,7 @@ func Query(ctx context.Context, pool *pgxpool.Pool, f Filters) ([]Record, int, e
 		var detail []byte
 		if err := rows.Scan(&r.ID, &r.OccurredAt, &r.Action,
 			&r.ActorID, &r.ActorUsername, &r.ActorRole,
+			&r.EntityType, &r.EntityID,
 			&r.TargetID, &r.TargetUsername,
 			&r.SourceIP, &detail); err != nil {
 			return nil, 0, err

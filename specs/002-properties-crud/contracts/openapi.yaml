@@ -1,0 +1,818 @@
+openapi: 3.1.0
+
+info:
+  title: Property Management System — Properties Register
+  version: 1.0.0
+  description: |
+    Source of truth for the boundary between the Angular application and the Go service
+    for feature 002-properties-crud. The Go server interface and the Angular client are
+    both generated from this document; neither side hand-writes these types
+    (Constitution III).
+
+    Authorization is decided on the server for every operation. `x-required-role` states
+    the requirement; an operation marked `admin` is refused for a manager regardless of
+    how the request is made (Constitution I). Configuration — property types, areas,
+    custom field definitions — and changing a property's reference code are `admin`.
+    Everything else is `manager`, which an administrator also satisfies.
+
+    Sensitive custom fields never appear in this document as a filterable field. The
+    server refuses a filter naming one even if a client constructs the request by hand
+    (FR-027s4, Constitution VII).
+
+    Every response body uses Western Arabic digits. Messages shown to users are Arabic.
+    All timestamps are RFC 3339 in UTC; the client renders them in Africa/Cairo.
+
+servers:
+  - url: https://localhost:8443/api/v1
+    description: Local development. TLS only — there is no plaintext listener.
+
+tags:
+  - name: properties
+    description: The register — list, detail, add, modify, archive, restore
+  - name: lookups
+    description: Property types and areas — read by anyone signed in, written by admin
+  - name: custom-fields
+    description: Custom field definitions — administrator only
+  - name: search
+    description: Advanced search across built-in and custom fields
+
+security:
+  - sessionCookie: []
+
+paths:
+
+  /properties:
+    get:
+      tags: [properties]
+      operationId: listProperties
+      summary: A page of the register
+      description: |
+        Sorted by name by default (FR-006). `q` matches the name and the reference code
+        after Arabic normalisation (FR-007). `code` and `name` are per-column filters
+        matching those single columns (FR-009a). Every filter combines by AND (FR-008).
+        Archived properties are excluded unless `includeArchived` is true (FR-022a).
+      x-required-role: manager
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: q
+          in: query
+          description: Matched against name and reference code.
+          schema: { type: string, maxLength: 120 }
+        - name: code
+          in: query
+          description: |
+            Column filter: substring match against the reference code after Arabic
+            normalisation. Combines with every other filter by AND.
+          schema: { type: string, maxLength: 32 }
+        - name: name
+          in: query
+          description: |
+            Column filter: substring match against the property name after Arabic
+            normalisation. Combines with every other filter by AND.
+          schema: { type: string, maxLength: 120 }
+        - name: propertyTypeId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: areaId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: includeArchived
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: A page of properties. An empty page is a valid answer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyPage' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
+    post:
+      tags: [properties]
+      operationId: createProperty
+      summary: Add a property
+      description: |
+        `code` may be supplied only by an administrator (FR-017c); a manager supplying it
+        is refused with 403. When omitted, the server generates the next code (FR-017a).
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PropertyCreate' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Property' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409':
+          description: The supplied reference code is already held, active or archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /properties/{propertyId}:
+    parameters:
+      - $ref: '#/components/parameters/PropertyId'
+    get:
+      tags: [properties]
+      operationId: getProperty
+      summary: One property with all of its fields
+      x-required-role: manager
+      responses:
+        '200':
+          description: The property, archived or not.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyDetail' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+    put:
+      tags: [properties]
+      operationId: updateProperty
+      summary: Modify a property
+      description: |
+        `version` must equal the version last read or the request is refused with 409
+        (FR-020). The reference code is not part of this body; it has its own operation
+        (FR-017c). An archived property is refused with 409 until restored (FR-022e).
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PropertyUpdate' }
+      responses:
+        '200':
+          description: Updated, with the new version.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyDetail' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: |
+            The property changed since it was read, or it is archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /properties/{propertyId}/code:
+    parameters:
+      - $ref: '#/components/parameters/PropertyId'
+    patch:
+      tags: [properties]
+      operationId: changePropertyCode
+      summary: Set a property's reference code
+      description: |
+        Administrator only (FR-017c). A separate operation rather than a field in the
+        update body, so that its authorization does not depend on which fields a request
+        happens to carry (Constitution I).
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, version]
+              properties:
+                code:    { $ref: '#/components/schemas/PropertyCode' }
+                version: { type: integer }
+      responses:
+        '200':
+          description: The code was changed; the old and new codes are in the audit log.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyDetail' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /properties/{propertyId}/archive:
+    parameters:
+      - $ref: '#/components/parameters/PropertyId'
+    post:
+      tags: [properties]
+      operationId: archiveProperty
+      summary: Archive a property
+      description: |
+        The property leaves the working list but is never destroyed (FR-021, FR-022). Its
+        reference code stays reserved forever (FR-022d).
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: integer }
+      responses:
+        '200':
+          description: Archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyDetail' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: Already archived, or changed since it was read.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /properties/{propertyId}/restore:
+    parameters:
+      - $ref: '#/components/parameters/PropertyId'
+    post:
+      tags: [properties]
+      operationId: restoreProperty
+      summary: Restore an archived property
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: integer }
+      responses:
+        '200':
+          description: Restored with every field as it was.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyDetail' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /property-types:
+    get:
+      tags: [lookups]
+      operationId: listPropertyTypes
+      summary: Every property type
+      description: Readable by anyone signed in — the property form needs it.
+      x-required-role: manager
+      responses:
+        '200':
+          description: All property types, ordered by label.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Lookup' }
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [lookups]
+      operationId: createPropertyType
+      x-required-role: admin
+      summary: Add a property type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LookupWrite' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Lookup' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /property-types/{lookupId}:
+    parameters:
+      - $ref: '#/components/parameters/LookupId'
+    put:
+      tags: [lookups]
+      operationId: renamePropertyType
+      summary: Rename a property type
+      description: |
+        Every property carrying it shows the new label immediately, because a property
+        refers to the entry by identity (FR-024b).
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LookupWrite' }
+      responses:
+        '200':
+          description: Renamed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Lookup' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [lookups]
+      operationId: deletePropertyType
+      summary: Remove an unused property type
+      x-required-role: admin
+      responses:
+        '204':
+          description: Removed.
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: |
+            In use. The Arabic message states how many properties use it, archived
+            included (FR-025).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /areas:
+    get:
+      tags: [lookups]
+      operationId: listAreas
+      summary: Every area
+      x-required-role: manager
+      responses:
+        '200':
+          description: All areas, ordered by label.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Lookup' }
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [lookups]
+      operationId: createArea
+      x-required-role: admin
+      summary: Add an area
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LookupWrite' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Lookup' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /areas/{lookupId}:
+    parameters:
+      - $ref: '#/components/parameters/LookupId'
+    put:
+      tags: [lookups]
+      operationId: renameArea
+      summary: Rename an area
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LookupWrite' }
+      responses:
+        '200':
+          description: Renamed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Lookup' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [lookups]
+      operationId: deleteArea
+      summary: Remove an unused area
+      x-required-role: admin
+      responses:
+        '204':
+          description: Removed.
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /custom-fields:
+    get:
+      tags: [custom-fields]
+      operationId: listCustomFields
+      summary: Every custom field definition
+      description: |
+        Readable by anyone signed in — the property form needs the definitions in order to
+        render. `isSensitive` is reported so the client can label the field; the value of
+        a sensitive field is still returned only on the property detail, and never in a
+        search (FR-027s4).
+      x-required-role: manager
+      responses:
+        '200':
+          description: All definitions in display order, each with its choices.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CustomField' }
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [custom-fields]
+      operationId: createCustomField
+      summary: Define a custom field
+      description: |
+        `isSensitive` may be true only when `fieldType` is `text` (FR-027s1). A dropdown or
+        multiselect must arrive with at least one choice (FR-027a).
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomFieldCreate' }
+      responses:
+        '201':
+          description: Defined.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomField' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /custom-fields/{fieldId}:
+    parameters:
+      - $ref: '#/components/parameters/FieldId'
+    put:
+      tags: [custom-fields]
+      operationId: updateCustomField
+      summary: Rename a field, or change its choices
+      description: |
+        The label may always change. `fieldType`, `isSensitive`, and the removal of an
+        existing choice are refused with 409 once any property holds a value for the field
+        (FR-027g, FR-027s5). Adding a choice is always permitted.
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomFieldUpdate' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomField' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: |
+            Values exist that the change would destroy. The Arabic message states how many.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [custom-fields]
+      operationId: deleteCustomField
+      summary: Remove a field no property uses
+      x-required-role: admin
+      responses:
+        '204':
+          description: Removed.
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /properties/search:
+    post:
+      tags: [search]
+      operationId: searchProperties
+      summary: Advanced search across built-in and custom fields
+      description: |
+        A POST because the filter set is structured and may be long; it reads and writes
+        nothing. Filters combine with AND; an unset filter constrains nothing (FR-027j).
+
+        A filter naming a sensitive field is refused with 400, not silently dropped
+        (FR-027s4). The server resolves every `fieldId` against the definitions before
+        building the query; an unknown id is refused (Constitution I — the server decides).
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdvancedSearch' }
+      responses:
+        '200':
+          description: A page of matching properties.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyPage' }
+        '400':
+          description: |
+            An unknown field, a sensitive field, or an operator that does not suit the
+            field's type.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
+components:
+
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: pms_session
+      description: |
+        Set by /auth/login in feature 001. HttpOnly, Secure, SameSite=Strict. Not readable
+        by JavaScript and never placed in a URL (Constitution VII).
+
+  parameters:
+    PropertyId:
+      name: propertyId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    LookupId:
+      name: lookupId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    FieldId:
+      name: fieldId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      description: The four page sizes the register offers (FR-009).
+      schema: { type: integer, enum: [10, 25, 50, 100], default: 25 }
+
+  schemas:
+
+    PropertyCode:
+      type: string
+      minLength: 1
+      maxLength: 32
+      description: |
+        Unique across the register, active and archived alike, compared after trimming,
+        case folding, and Arabic normalisation. Never reused (FR-017, FR-017b).
+
+    PropertyName:
+      type: string
+      minLength: 2
+      maxLength: 120
+      description: |
+        Descriptive, not identifying. Two properties may share a name (FR-016a).
+
+    Lookup:
+      type: object
+      required: [id, label]
+      properties:
+        id:    { type: string, format: uuid }
+        label: { type: string, minLength: 1, maxLength: 60 }
+
+    LookupWrite:
+      type: object
+      required: [label]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 60 }
+
+    CustomFieldType:
+      type: string
+      enum: [text, dropdown, multiselect, checkbox]
+
+    CustomFieldChoice:
+      type: object
+      required: [id, label]
+      properties:
+        id:    { type: string, format: uuid }
+        label: { type: string, minLength: 1, maxLength: 60 }
+
+    CustomField:
+      type: object
+      required: [id, label, fieldType, isSensitive, choices]
+      properties:
+        id:          { type: string, format: uuid }
+        label:       { type: string, minLength: 1, maxLength: 60 }
+        fieldType:   { $ref: '#/components/schemas/CustomFieldType' }
+        isSensitive:
+          type: boolean
+          description: |
+            True only for a `text` field. Its values are encrypted at rest and it cannot be
+            searched, sorted, or filtered (Constitution VII, FR-027s4).
+        choices:
+          type: array
+          items: { $ref: '#/components/schemas/CustomFieldChoice' }
+
+    CustomFieldCreate:
+      type: object
+      required: [label, fieldType]
+      properties:
+        label:       { type: string, minLength: 1, maxLength: 60 }
+        fieldType:   { $ref: '#/components/schemas/CustomFieldType' }
+        isSensitive: { type: boolean, default: false }
+        choices:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 60 }
+
+    CustomFieldUpdate:
+      type: object
+      required: [label]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 60 }
+        addChoices:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 60 }
+        removeChoiceIds:
+          type: array
+          items: { type: string, format: uuid }
+
+    CustomFieldValue:
+      type: object
+      required: [fieldId]
+      description: |
+        Exactly one of the value members is present, matching the field's type. A
+        sensitive field's value arrives here decrypted, and only on the property detail —
+        never in a list or a search result.
+      properties:
+        fieldId:   { type: string, format: uuid }
+        text:      { type: [string, 'null'] }
+        checked:   { type: [boolean, 'null'] }
+        choiceId:  { type: [string, 'null'], format: uuid }
+        choiceIds:
+          type: array
+          items: { type: string, format: uuid }
+
+    PropertySummary:
+      type: object
+      required: [id, code, name, propertyType, area, isArchived]
+      description: One row of the list. Custom values are not included here.
+      properties:
+        id:           { type: string, format: uuid }
+        code:         { $ref: '#/components/schemas/PropertyCode' }
+        name:         { $ref: '#/components/schemas/PropertyName' }
+        propertyType: { $ref: '#/components/schemas/Lookup' }
+        area:         { $ref: '#/components/schemas/Lookup' }
+        isArchived:   { type: boolean }
+
+    Property:
+      allOf:
+        - $ref: '#/components/schemas/PropertySummary'
+        - type: object
+          required: [version, createdAt, createdBy, updatedAt, updatedBy]
+          properties:
+            version:    { type: integer }
+            createdAt:  { type: string, format: date-time }
+            createdBy:  { type: string }
+            updatedAt:  { type: string, format: date-time }
+            updatedBy:  { type: string }
+            archivedAt: { type: [string, 'null'], format: date-time }
+            archivedBy: { type: [string, 'null'] }
+
+    PropertyDetail:
+      allOf:
+        - $ref: '#/components/schemas/Property'
+        - type: object
+          required: [customValues]
+          properties:
+            customValues:
+              type: array
+              items: { $ref: '#/components/schemas/CustomFieldValue' }
+
+    PropertyCreate:
+      type: object
+      required: [name, propertyTypeId, areaId]
+      properties:
+        name:           { $ref: '#/components/schemas/PropertyName' }
+        propertyTypeId:
+          type: string
+          format: uuid
+          description: Must name a configured type; a free-typed value is impossible (FR-018).
+        areaId:         { type: string, format: uuid }
+        code:
+          $ref: '#/components/schemas/PropertyCode'
+          description: |
+            Administrator only. A manager supplying it is refused with 403. Omitted, the
+            server generates the next code (FR-017a, FR-017c).
+        customValues:
+          type: array
+          items: { $ref: '#/components/schemas/CustomFieldValue' }
+
+    PropertyUpdate:
+      type: object
+      required: [name, propertyTypeId, areaId, version]
+      properties:
+        name:           { $ref: '#/components/schemas/PropertyName' }
+        propertyTypeId: { type: string, format: uuid }
+        areaId:         { type: string, format: uuid }
+        version:        { type: integer }
+        customValues:
+          type: array
+          items: { $ref: '#/components/schemas/CustomFieldValue' }
+
+    PropertyPage:
+      type: object
+      required: [items, page, pageSize, totalItems]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PropertySummary' }
+        page:       { type: integer }
+        pageSize:   { type: integer }
+        totalItems: { type: integer }
+
+    SearchOperator:
+      type: string
+      enum: [contains, equals, includesAll, isTrue, isFalse]
+      description: |
+        `contains` suits text; `equals` a dropdown; `includesAll` a multiselect;
+        `isTrue`/`isFalse` a checkbox. The server checks the pairing and refuses a
+        mismatch with 400.
+
+    CustomFieldFilter:
+      type: object
+      required: [fieldId, operator]
+      properties:
+        fieldId:   { type: string, format: uuid }
+        operator:  { $ref: '#/components/schemas/SearchOperator' }
+        text:      { type: [string, 'null'] }
+        choiceId:  { type: [string, 'null'], format: uuid }
+        choiceIds:
+          type: array
+          items: { type: string, format: uuid }
+
+    AdvancedSearch:
+      type: object
+      properties:
+        q:              { type: string, maxLength: 120 }
+        propertyTypeId: { type: string, format: uuid }
+        areaId:         { type: string, format: uuid }
+        includeArchived: { type: boolean, default: false }
+        page:     { type: integer, minimum: 1, default: 1 }
+        pageSize: { type: integer, enum: [10, 25, 50, 100], default: 25 }
+        customFilters:
+          type: array
+          items: { $ref: '#/components/schemas/CustomFieldFilter' }
+
+    Error:
+      type: object
+      required: [code, message]
+      description: |
+        The same error shape feature 001 defined, unchanged (Constitution III). `message`
+        is Arabic and states what the user should do next. It never carries internal
+        failure detail, a key, or a decrypted value (Constitution VII).
+      properties:
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - not_authenticated
+            - forbidden
+            - not_found
+            - conflict
+            - in_use
+            - version_conflict
+            - archived
+            - internal_error
+        message:
+          type: string
+          description: Arabic, user-facing.
+        fields:
+          type: [object, 'null']
+          additionalProperties: { type: string }
+          description: Field-level Arabic messages, keyed by field name, for form errors.
+
+  responses:
+    Error:
+      description: The request was refused. Body is the single error shape.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

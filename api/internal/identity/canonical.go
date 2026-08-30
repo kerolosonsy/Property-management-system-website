@@ -21,6 +21,18 @@ func HasInvisibleOrBidi(s string) bool {
 	return strings.ContainsAny(s, invisibleChars)
 }
 
+// CanonicalQuery prepares a free-text search query for LIKE matching. It is
+// the same Canonical normalisation followed by trimming and lower-casing the
+// LIKE wildcards out of the input, so a search for "10%" is a literal substring
+// search rather than a "ends with 10" pattern (research.md edge case: "search
+// text contains characters that have special meaning to the search? They are
+// treated as literal text").
+func CanonicalQuery(raw string) string {
+	s := Canonical(raw)
+	replacer := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+	return replacer.Replace(s)
+}
+
 // AllowedUsernameRune reports whether r is one of the characters FR-036
 // allows (Arabic letter, Latin letter, digit, dot, underscore, hyphen).
 // Combining marks (Unicode Mn/Mc/Me) are also accepted because the

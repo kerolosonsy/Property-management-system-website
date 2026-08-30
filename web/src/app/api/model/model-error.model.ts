@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -10,7 +10,7 @@
 
 
 /**
- * The single error shape used by every operation in this document (Constitution III). `message` is Arabic and states what the user should do next (FR-027). It never carries internal failure detail (FR-028). 
+ * The single error shape used by every operation in this document (Constitution III). `message` is Arabic and states what the user should do next. It never carries internal failure detail, a key, a wrapped key, or a decrypted value (Constitution VII). 
  */
 export interface ModelError { 
     code: ModelError.CodeEnum;
@@ -22,6 +22,10 @@ export interface ModelError {
      * Field-level Arabic messages, keyed by field name, for form errors.
      */
     fields?: { [key: string]: string; } | null;
+    /**
+     * Seconds remaining before another attempt is accepted (sign-in throttling).
+     */
+    retryAfterSeconds?: number | null;
 }
 export namespace ModelError {
     export const CodeEnum = {
@@ -32,6 +36,9 @@ export namespace ModelError {
         Forbidden: 'forbidden',
         NotFound: 'not_found',
         Conflict: 'conflict',
+        InUse: 'in_use',
+        VersionConflict: 'version_conflict',
+        Archived: 'archived',
         PasswordChangeRequired: 'password_change_required',
         InternalError: 'internal_error',
     } as const;

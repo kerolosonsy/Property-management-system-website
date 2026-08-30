@@ -12,15 +12,18 @@ import (
 
 // Error codes (must match contracts/openapi.yaml components.schemas.Error).
 const (
-	CodeInvalidRequest        = "invalid_request"
-	CodeInvalidCredentials    = "invalid_credentials"
-	CodeTooSoon               = "too_soon"
-	CodeNotAuthenticated      = "not_authenticated"
-	CodeForbidden             = "forbidden"
-	CodeNotFound              = "not_found"
-	CodeConflict              = "conflict"
+	CodeInvalidRequest         = "invalid_request"
+	CodeInvalidCredentials     = "invalid_credentials"
+	CodeTooSoon                = "too_soon"
+	CodeNotAuthenticated       = "not_authenticated"
+	CodeForbidden              = "forbidden"
+	CodeNotFound               = "not_found"
+	CodeConflict               = "conflict"
+	CodeInUse                  = "in_use"
+	CodeVersionConflict        = "version_conflict"
+	CodeArchived               = "archived"
 	CodePasswordChangeRequired = "password_change_required"
-	CodeInternalError         = "internal_error"
+	CodeInternalError          = "internal_error"
 )
 
 // APIError is a typed error that carries the code, message, status, and optional

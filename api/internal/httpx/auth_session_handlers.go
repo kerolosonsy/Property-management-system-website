@@ -34,13 +34,16 @@ func (s *Server) handleSignOut() http.Handler {
 
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
-		_ = audit.Write(r.Context(), tx, audit.Entry{
+		if err := audit.Write(r.Context(), tx, audit.Entry{
 			Action:        audit.SignOut,
 			ActorAccountID: &actorID,
 			ActorUsername:  c.Account.Username,
 			ActorRole:      &actorRole,
 			SourceIP:       ClientIP(r),
-		})
+		}); err != nil {
+			refuseInternal(w, err)
+			return
+		}
 		if err := tx.Commit(r.Context()); err != nil {
 			refuseInternal(w, err)
 			return
@@ -151,7 +154,7 @@ func (s *Server) handleChangePassword() http.Handler {
 
 		actorID := acct.ID
 		actorRole := acct.Role
-		_ = audit.Write(r.Context(), tx, audit.Entry{
+		if err := audit.Write(r.Context(), tx, audit.Entry{
 			Action:        audit.PasswordChanged,
 			ActorAccountID: &actorID,
 			ActorUsername:  acct.Username,
@@ -159,8 +162,11 @@ func (s *Server) handleChangePassword() http.Handler {
 			TargetAccountID: &actorID,
 			TargetUsername:  strPtr(acct.Username),
 			SourceIP:       ClientIP(r),
-		})
-		_ = audit.Write(r.Context(), tx, audit.Entry{
+		}); err != nil {
+			refuseInternal(w, err)
+			return
+		}
+		if err := audit.Write(r.Context(), tx, audit.Entry{
 			Action:        audit.SessionsInvalidated,
 			ActorAccountID: &actorID,
 			ActorUsername:  acct.Username,
@@ -168,7 +174,10 @@ func (s *Server) handleChangePassword() http.Handler {
 			TargetAccountID: &actorID,
 			TargetUsername:  strPtr(acct.Username),
 			SourceIP:       ClientIP(r),
-		})
+		}); err != nil {
+			refuseInternal(w, err)
+			return
+		}
 		if err := tx.Commit(r.Context()); err != nil {
 			refuseInternal(w, err)
 			return

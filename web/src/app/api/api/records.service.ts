@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -54,7 +54,7 @@ export class RecordsService extends BaseService {
 
     /**
      * Read recorded actions
-     * Administrator only (FR-043). Newest first, paged, filters combinable (FR-044, FR-045). There is no operation anywhere in this document that edits or deletes a record (FR-046, FR-024). 
+     * Administrator only. Newest first, paged, filters combinable. There is no operation anywhere in this document that edits or deletes a record. 
      * @endpoint get /audit-records
      * @param requestParameters
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
