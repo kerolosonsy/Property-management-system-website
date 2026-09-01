@@ -30,6 +30,8 @@ import { PropertyDetail } from '../model/property-detail.model';
 import { PropertyPage } from '../model/property-page.model';
 // @ts-ignore
 import { PropertyUpdate } from '../model/property-update.model';
+// @ts-ignore
+import { RestorePropertyRequest } from '../model/restore-property-request.model';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -71,7 +73,7 @@ export interface ListPropertiesRequestParams {
 
 export interface RestorePropertyRequestParams {
     propertyId: string;
-    archivePropertyRequest: ArchivePropertyRequest;
+    restorePropertyRequest: RestorePropertyRequest;
 }
 
 export interface UpdatePropertyRequestParams {
@@ -91,7 +93,7 @@ export class PropertiesService extends BaseService {
 
     /**
      * Archive a property
-     * The property leaves the working list but is never destroyed. Its reference code stays reserved forever. 
+     * The property leaves the working list but is never destroyed. Its reference code stays reserved forever. An optional Arabic &#x60;note&#x60; (up to 500 characters) records why the property was archived; it is shown on the detail screen while archived and in the audit row\&#39;s detail. Restoring clears the note. 
      * @endpoint post /properties/{propertyId}/archive
      * @param requestParameters
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -521,9 +523,9 @@ export class PropertiesService extends BaseService {
         if (propertyId === null || propertyId === undefined) {
             throw new Error('Required parameter propertyId was null or undefined when calling restoreProperty.');
         }
-        const archivePropertyRequest = requestParameters?.archivePropertyRequest;
-        if (archivePropertyRequest === null || archivePropertyRequest === undefined) {
-            throw new Error('Required parameter archivePropertyRequest was null or undefined when calling restoreProperty.');
+        const restorePropertyRequest = requestParameters?.restorePropertyRequest;
+        if (restorePropertyRequest === null || restorePropertyRequest === undefined) {
+            throw new Error('Required parameter restorePropertyRequest was null or undefined when calling restoreProperty.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -567,7 +569,7 @@ export class PropertiesService extends BaseService {
         return this.httpClient.request<PropertyDetail>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: archivePropertyRequest,
+                body: restorePropertyRequest,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,

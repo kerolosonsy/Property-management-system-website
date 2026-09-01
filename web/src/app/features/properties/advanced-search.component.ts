@@ -5,7 +5,7 @@
 
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { SearchService } from '../../api/api/search.service';
 import { LookupsService } from '../../api/api/lookups.service';
@@ -15,6 +15,7 @@ import { Lookup } from '../../api/model/lookup.model';
 import { PropertySummary } from '../../api/model/property-summary.model';
 import { SearchOperator } from '../../api/model/search-operator.model';
 import { ARABIC_MESSAGES, format } from '../../shared/messages';
+import { AdvancedSearch } from '../../api/model/advanced-search.model';
 import { ApiError } from '../../core/api-error';
 import { WesternDigitsDirective } from '../../shared/western-digits.directive';
 
@@ -29,7 +30,7 @@ interface CustomFilterState {
 @Component({
   selector: 'app-advanced-search',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, WesternDigitsDirective],
+  imports: [FormsModule, CommonModule, ReactiveFormsModule, RouterLink, WesternDigitsDirective],
   template: `
     <section class="pms-page">
       <header class="pms-view-head">
@@ -39,7 +40,9 @@ interface CustomFilterState {
         </div>
         <div class="pms-toolbar-spacer"></div>
         <a routerLink="/properties" class="btn btn-secondary">{{ msgs.backToList }}</a>
-        <button type="button" class="btn btn-secondary" (click)="clearAll()">{{ msgs.clearAllFilters }}</button>
+        <button type="button" class="btn btn-secondary" (click)="clearAll()">
+          {{ msgs.clearAllFilters }}
+        </button>
       </header>
 
       <div class="card">
@@ -49,8 +52,14 @@ interface CustomFilterState {
           <div class="pms-filters">
             <div class="field pms-field pms-field-grow">
               <label for="q">{{ msgs.search }}</label>
-              <input id="q" class="input" type="search" formControlName="q" appWesternDigits
-                     [placeholder]="msgs.searchPlaceholder" />
+              <input
+                id="q"
+                class="input"
+                type="search"
+                formControlName="q"
+                appWesternDigits
+                [placeholder]="msgs.searchPlaceholder"
+              />
             </div>
             <div class="field pms-field">
               <label for="propertyTypeId">{{ msgs.propertyType }}</label>
@@ -70,6 +79,32 @@ interface CustomFilterState {
                 }
               </select>
             </div>
+            <div class="field pms-field pms-field-grow">
+              <label for="documentText">{{ msgs.documentSearch }}</label>
+              <input
+                id="documentText"
+                class="input"
+                type="search"
+                formControlName="documentText"
+                appWesternDigits
+                [placeholder]="msgs.documentSearchPlaceholder"
+              />
+              <div class="pms-note">{{ msgs.documentSearchSensitiveExcluded }}</div>
+            </div>
+            <div class="field pms-field pms-field-grow">
+              <label for="attachmentName">{{ msgs.attachmentNameSearch }}</label>
+              <input id="attachmentName" class="input" type="search" formControlName="attachmentName"
+                     appWesternDigits [placeholder]="msgs.attachmentNameSearch" />
+              <div class="pms-note">{{ msgs.attachmentNameSearchHint }}</div>
+            </div>
+            <div class="field pms-field">
+              <label for="hasAttachments">{{ msgs.hasAttachmentsFilter }}</label>
+              <select id="hasAttachments" class="input" formControlName="hasAttachments">
+                <option [ngValue]="'any'">{{ msgs.hasAttachmentsAny }}</option>
+                <option [ngValue]="'yes'">{{ msgs.hasAttachmentsYes }}</option>
+                <option [ngValue]="'no'">{{ msgs.hasAttachmentsNo }}</option>
+              </select>
+            </div>
             <div class="field pms-field pms-field-checkbox">
               <label for="includeArchived">{{ msgs.includeArchived }}</label>
               <input id="includeArchived" type="checkbox" formControlName="includeArchived" />
@@ -83,11 +118,20 @@ interface CustomFilterState {
                 <label [attr.for]="'adv-' + fs.field.id">{{ fs.field.label }}</label>
                 @switch (fs.field.fieldType) {
                   @case ('text') {
-                    <input class="input" [attr.id]="'adv-' + fs.field.id" type="text"
-                           [formControl]="fs.text" appWesternDigits />
+                    <input
+                      class="input"
+                      [attr.id]="'adv-' + fs.field.id"
+                      type="text"
+                      [formControl]="fs.text"
+                      appWesternDigits
+                    />
                   }
                   @case ('dropdown') {
-                    <select class="input" [attr.id]="'adv-' + fs.field.id" [formControl]="fs.choice">
+                    <select
+                      class="input"
+                      [attr.id]="'adv-' + fs.field.id"
+                      [formControl]="fs.choice"
+                    >
                       <option [ngValue]="''">—</option>
                       @for (ch of fs.field.choices; track ch.id) {
                         <option [ngValue]="ch.id">{{ ch.label }}</option>
@@ -98,16 +142,22 @@ interface CustomFilterState {
                     <div class="pms-multi-row">
                       @for (ch of fs.field.choices; track ch.id) {
                         <label class="pms-multi-option">
-                          <input type="checkbox"
-                                 [checked]="fs.choices.value.includes(ch.id)"
-                                 (change)="toggleMulti(fs, ch.id, $event)" />
+                          <input
+                            type="checkbox"
+                            [checked]="fs.choices.value.includes(ch.id)"
+                            (change)="toggleMulti(fs, ch.id, $event)"
+                          />
                           {{ ch.label }}
                         </label>
                       }
                     </div>
                   }
                   @case ('checkbox') {
-                    <select class="input" [attr.id]="'adv-' + fs.field.id" [formControl]="fs.checked">
+                    <select
+                      class="input"
+                      [attr.id]="'adv-' + fs.field.id"
+                      [formControl]="fs.checked"
+                    >
                       <option [ngValue]="null">—</option>
                       <option [ngValue]="true">{{ msgs.yes }}</option>
                       <option [ngValue]="false">{{ msgs.no }}</option>
@@ -119,8 +169,12 @@ interface CustomFilterState {
           }
 
           <div style="display: flex; gap: 0.75rem; margin-block-start: 1rem;">
-            <button type="submit" class="btn btn-primary" [disabled]="searching()">{{ msgs.search }}</button>
-            <button type="button" class="btn btn-secondary" (click)="clearAll()">{{ msgs.clearAllFilters }}</button>
+            <button type="submit" class="btn btn-primary" [disabled]="searching()">
+              {{ msgs.search }}
+            </button>
+            <button type="button" class="btn btn-secondary" (click)="clearAll()">
+              {{ msgs.clearAllFilters }}
+            </button>
           </div>
         </form>
 
@@ -142,11 +196,31 @@ interface CustomFilterState {
             <tbody>
               @for (p of results(); track p.id) {
                 <tr>
-                  <td><a [routerLink]="['/properties', p.id]">{{ p.code }}</a></td>
+                  <td>
+                    <a [routerLink]="['/properties', p.id]">{{ p.code }}</a>
+                  </td>
                   <td>
                     <a [routerLink]="['/properties', p.id]">{{ p.name }}</a>
                     @if (p.isArchived) {
                       <span class="pms-pill pms-pill-warn">{{ msgs.propertyArchived }}</span>
+                    }
+                    @if (p.matchedAttachments?.length) {
+                      <div class="pms-note">
+                        {{ msgs.documentSearchMatches }}:
+                        @for (attachment of p.matchedAttachments; track attachment.id) {
+                          <a
+                            [routerLink]="[
+                              '/properties',
+                              p.id,
+                              'attachments',
+                              attachment.id,
+                              'text',
+                            ]"
+                          >
+                            {{ attachment.description }}
+                          </a>
+                        }
+                      </div>
                     }
                   </td>
                   <td>{{ p.propertyType.label }}</td>
@@ -184,6 +258,9 @@ export class AdvancedSearchComponent implements OnInit {
     q: new FormControl('', { nonNullable: true }),
     propertyTypeId: new FormControl('', { nonNullable: true }),
     areaId: new FormControl('', { nonNullable: true }),
+    documentText: new FormControl('', { nonNullable: true }),
+    attachmentName: new FormControl('', { nonNullable: true }),
+    hasAttachments: new FormControl('any', { nonNullable: true }),
     includeArchived: new FormControl(false, { nonNullable: true }),
     page: new FormControl(1, { nonNullable: true }),
     pageSize: new FormControl(25, { nonNullable: true }),
@@ -202,13 +279,15 @@ export class AdvancedSearchComponent implements OnInit {
       next: (fields) => {
         // FR-027s4: sensitive fields are excluded from the search.
         const searchable = fields.filter((f) => !f.isSensitive);
-        this.filterStates.set(searchable.map((f) => ({
-          field: f,
-          text: new FormControl<string>('', { nonNullable: true }),
-          choice: new FormControl<string>('', { nonNullable: true }),
-          choices: new FormControl<string[]>([], { nonNullable: true }),
-          checked: new FormControl<boolean | null>(null),
-        })));
+        this.filterStates.set(
+          searchable.map((f) => ({
+            field: f,
+            text: new FormControl<string>('', { nonNullable: true }),
+            choice: new FormControl<string>('', { nonNullable: true }),
+            choices: new FormControl<string[]>([], { nonNullable: true }),
+            checked: new FormControl<boolean | null>(null),
+          })),
+        );
       },
       error: () => this.filterStates.set([]),
     });
@@ -217,12 +296,21 @@ export class AdvancedSearchComponent implements OnInit {
   protected toggleMulti(fs: CustomFilterState, id: string, ev: Event): void {
     const checked = (ev.target as HTMLInputElement).checked;
     const current = new Set(fs.choices.value);
-    if (checked) current.add(id); else current.delete(id);
+    if (checked) current.add(id);
+    else current.delete(id);
     fs.choices.setValue([...current]);
   }
 
   protected clearAll(): void {
-    this.form.reset({ q: '', propertyTypeId: '', areaId: '', includeArchived: false, page: 1, pageSize: 25 });
+    this.form.reset({
+      q: '',
+      documentText: '',
+      propertyTypeId: '',
+      areaId: '',
+      includeArchived: false,
+      page: 1,
+      pageSize: 25,
+    });
     for (const fs of this.filterStates()) {
       fs.text.setValue('');
       fs.choice.setValue('');
@@ -250,42 +338,67 @@ export class AdvancedSearchComponent implements OnInit {
     for (const fs of this.filterStates()) {
       switch (fs.field.fieldType) {
         case 'text':
-          if (fs.text.value) customFilters.push({ fieldId: fs.field.id, operator: SearchOperator.Contains, text: fs.text.value });
+          if (fs.text.value)
+            customFilters.push({
+              fieldId: fs.field.id,
+              operator: SearchOperator.Contains,
+              text: fs.text.value,
+            });
           break;
         case 'dropdown':
-          if (fs.choice.value) customFilters.push({ fieldId: fs.field.id, operator: SearchOperator.Equals, choiceId: fs.choice.value });
+          if (fs.choice.value)
+            customFilters.push({
+              fieldId: fs.field.id,
+              operator: SearchOperator.Equals,
+              choiceId: fs.choice.value,
+            });
           break;
         case 'multiselect':
-          if (fs.choices.value.length > 0) customFilters.push({ fieldId: fs.field.id, operator: SearchOperator.IncludesAll, choiceIds: fs.choices.value });
+          if (fs.choices.value.length > 0)
+            customFilters.push({
+              fieldId: fs.field.id,
+              operator: SearchOperator.IncludesAll,
+              choiceIds: fs.choices.value,
+            });
           break;
         case 'checkbox':
-          if (fs.checked.value === true) customFilters.push({ fieldId: fs.field.id, operator: SearchOperator.IsTrue });
-          else if (fs.checked.value === false) customFilters.push({ fieldId: fs.field.id, operator: SearchOperator.IsFalse });
+          if (fs.checked.value === true)
+            customFilters.push({ fieldId: fs.field.id, operator: SearchOperator.IsTrue });
+          else if (fs.checked.value === false)
+            customFilters.push({ fieldId: fs.field.id, operator: SearchOperator.IsFalse });
           break;
       }
     }
 
-    this.searchSvc.searchProperties({
-      advancedSearch: {
-        q: raw.q || undefined,
-        propertyTypeId: raw.propertyTypeId || undefined,
-        areaId: raw.areaId || undefined,
-        includeArchived: raw.includeArchived,
-        page: raw.page,
-        pageSize: raw.pageSize as 10 | 25 | 50 | 100,
-        customFilters: customFilters.length > 0 ? customFilters : undefined,
-      },
-    }, 'body').subscribe({
-      next: (resp) => {
-        this.results.set(resp.items);
-        this.totalItems.set(resp.totalItems);
-        this.searched.set(true);
-        this.searching.set(false);
-      },
-      error: (err: ApiError) => {
-        this.searching.set(false);
-        this.errorMessage.set(err.message || this.msgs.internalError);
-      },
-    });
+    this.searchSvc
+      .searchProperties(
+        {
+          advancedSearch: {
+            q: raw.q || undefined,
+            documentText: raw.documentText || undefined,
+        attachmentName: raw.attachmentName || undefined,
+        hasAttachments: (raw.hasAttachments || 'any') as AdvancedSearch.HasAttachmentsEnum,
+            propertyTypeId: raw.propertyTypeId || undefined,
+            areaId: raw.areaId || undefined,
+            includeArchived: raw.includeArchived,
+            page: raw.page,
+            pageSize: raw.pageSize as 10 | 25 | 50 | 100,
+            customFilters: customFilters.length > 0 ? customFilters : undefined,
+          },
+        },
+        'body',
+      )
+      .subscribe({
+        next: (resp) => {
+          this.results.set(resp.items);
+          this.totalItems.set(resp.totalItems);
+          this.searched.set(true);
+          this.searching.set(false);
+        },
+        error: (err: ApiError) => {
+          this.searching.set(false);
+          this.errorMessage.set(err.message || this.msgs.internalError);
+        },
+      });
   }
 }

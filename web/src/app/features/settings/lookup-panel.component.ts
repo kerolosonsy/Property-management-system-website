@@ -5,19 +5,20 @@
 
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LookupsService } from '../../api/api/lookups.service';
 import { Lookup } from '../../api/model/lookup.model';
 import { ARABIC_MESSAGES, format } from '../../shared/messages';
 import { ApiError } from '../../core/api-error';
 import { WesternDigitsDirective } from '../../shared/western-digits.directive';
+import { CloseOnEscapeDirective } from '../../shared/close-on-escape.directive';
 
 type Entity = 'property-types' | 'areas';
 
 @Component({
   selector: 'app-lookup-panel',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, WesternDigitsDirective],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, WesternDigitsDirective, CloseOnEscapeDirective],
   template: `
     <div class="card blueprint elev-sm">
           <i class="corner tl"></i><i class="corner tr"></i>
@@ -78,7 +79,7 @@ type Entity = 'property-types' | 'areas';
     </div>
 
     @if (confirmRemove(); as it) {
-      <div class="pms-modal-backdrop" (click)="cancelRemove()">
+      <div class="pms-modal-backdrop" (click)="cancelRemove()" [pmsCloseOnEscape]="cancelRemove">
         <div class="pms-modal" (click)="$event.stopPropagation()">
           <h2>{{ msgs.lookupRemove }}</h2>
           <p>{{ format(msgs.lookupConfirmRemove, { name: it.label }) }}</p>

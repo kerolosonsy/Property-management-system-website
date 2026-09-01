@@ -7,51 +7,13 @@ import (
 	"strings"
 
 	"pms/internal/audit"
+	"pms/internal/gen"
 	"pms/internal/identity"
 	"pms/internal/properties"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
-
-// propertyCreateBody mirrors the OpenAPI request body. Field names match the
-// contract; the handler uses a private struct to keep independent of any
-// future generated body type.
-type propertyCreateBody struct {
-	Name           string                    `json:"name"`
-	PropertyTypeID uuid.UUID                 `json:"propertyTypeId"`
-	AreaID         uuid.UUID                 `json:"areaId"`
-	Code           *string                   `json:"code,omitempty"`
-	CustomValues   []propertyCustomValueBody `json:"customValues,omitempty"`
-}
-
-type propertyCustomValueBody struct {
-	FieldID   string    `json:"fieldId"`
-	Text      *string   `json:"text,omitempty"`
-	Checked   *bool     `json:"checked,omitempty"`
-	ChoiceID  *string   `json:"choiceId,omitempty"`
-	ChoiceIDs []string  `json:"choiceIds,omitempty"`
-}
-
-// propertyUpdateBody is the same shape minus the code field.
-type propertyUpdateBody struct {
-	Name           string                    `json:"name"`
-	PropertyTypeID uuid.UUID                 `json:"propertyTypeId"`
-	AreaID         uuid.UUID                 `json:"areaId"`
-	Version        int                       `json:"version"`
-	CustomValues   []propertyCustomValueBody `json:"customValues,omitempty"`
-}
-
-// propertyChangeCodeBody is the request shape for PATCH /properties/{id}/code.
-type propertyChangeCodeBody struct {
-	Code    string `json:"code"`
-	Version int    `json:"version"`
-}
-
-// propertyVersionBody is the request shape for archive/restore.
-type propertyVersionBody struct {
-	Version int `json:"version"`
-}
 
 // normalisePropertyName applies the trim + collapse rule (FR-016) before
 // storage and normalisation.
@@ -89,7 +51,7 @@ func (s *Server) handleCreateProperty() http.Handler {
 			return
 		}
 
-		var body propertyCreateBody
+		var body gen.PropertyCreate
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -155,12 +117,12 @@ func (s *Server) handleCreateProperty() http.Handler {
 
 		// Validate the chosen type and area exist; a free-typed value
 		// becomes a foreign-key violation otherwise.
-		if !s.lookupExists(r.Context(), tx, "property_type", body.PropertyTypeID) {
+		if !s.lookupExists(r.Context(), tx, "property_type", body.PropertyTypeId) {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
 				WithField("propertyTypeId", MsgPropertyTypeRequired))
 			return
 		}
-		if !s.lookupExists(r.Context(), tx, "area", body.AreaID) {
+		if !s.lookupExists(r.Context(), tx, "area", body.AreaId) {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
 				WithField("areaId", MsgPropertyAreaRequired))
 			return
@@ -169,7 +131,7 @@ func (s *Server) handleCreateProperty() http.Handler {
 		nameNorm := identity.Canonical(name)
 		created, err := s.properties.CreateProperty(r.Context(), tx,
 			name, nameNorm, code, codeNorm,
-			body.PropertyTypeID, body.AreaID, c.Account.ID)
+			body.PropertyTypeId, body.AreaId, c.Account.ID)
 		if err != nil {
 			if err == properties.ErrDuplicateCode {
 				WriteError(w, NewAPIError(http.StatusConflict, CodeConflict, MsgPropertyCodeTaken).
@@ -180,13 +142,14 @@ func (s *Server) handleCreateProperty() http.Handler {
 			return
 		}
 
-		if len(body.CustomValues) > 0 {
-			defs, err := s.loadCustomValueDefinitions(r.Context(), tx, body.CustomValues)
+		customValues := customValueBodies(body.CustomValues)
+		if len(customValues) > 0 {
+			defs, err := s.loadCustomValueDefinitions(r.Context(), tx, customValues)
 			if err != nil {
 				refuseInternal(w, err)
 				return
 			}
-			inputs, apiErr := buildCustomValueInputs(body.CustomValues, defs)
+			inputs, apiErr := buildCustomValueInputs(customValues, defs)
 			if apiErr != nil {
 				WriteError(w, apiErr)
 				return
@@ -207,7 +170,7 @@ func (s *Server) handleCreateProperty() http.Handler {
 			EntityType:     audit.EntityProperty,
 			EntityID:       code,
 			SourceIP:       ClientIP(r),
-			Detail:         map[string]any{"name": name},
+			After:          map[string]any{"name": name, "code": code},
 		}); err != nil {
 			refuseInternal(w, err)
 			return
@@ -246,7 +209,7 @@ func (s *Server) handleUpdateProperty() http.Handler {
 			return
 		}
 
-		var body propertyUpdateBody
+		var body gen.PropertyUpdate
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -266,20 +229,34 @@ func (s *Server) handleUpdateProperty() http.Handler {
 		}
 		defer tx.Rollback(r.Context())
 
-		if !s.lookupExists(r.Context(), tx, "property_type", body.PropertyTypeID) {
+		if !s.lookupExists(r.Context(), tx, "property_type", body.PropertyTypeId) {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
 				WithField("propertyTypeId", MsgPropertyTypeRequired))
 			return
 		}
-		if !s.lookupExists(r.Context(), tx, "area", body.AreaID) {
+		if !s.lookupExists(r.Context(), tx, "area", body.AreaId) {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
 				WithField("areaId", MsgPropertyAreaRequired))
 			return
 		}
 
+		// The prior state MUST be read before the update. Snapshotting the
+		// returned row gives the new values for both sides of the audit
+		// entry, which makes the record say nothing changed and makes undo
+		// restore the value it was meant to replace.
+		prior, err := s.properties.FindByID(r.Context(), tx, id)
+		if err != nil {
+			refuseInternal(w, err)
+			return
+		}
+		if prior == nil {
+			WriteError(w, NewAPIError(http.StatusNotFound, CodeNotFound, MsgPropertyNotFound))
+			return
+		}
+
 		nameNorm := identity.Canonical(name)
 		updated, err := s.properties.UpdateProperty(r.Context(), tx,
-			id, name, nameNorm, body.PropertyTypeID, body.AreaID,
+			id, name, nameNorm, body.PropertyTypeId, body.AreaId,
 			c.Account.ID, body.Version)
 		if err != nil {
 			switch err {
@@ -294,17 +271,32 @@ func (s *Server) handleUpdateProperty() http.Handler {
 			return
 		}
 
+		// Read custom values before replacing them so the audit can retain
+		// only the fields that actually changed. Sensitive plaintext is used
+		// in memory for comparison only and never enters the audit payload.
+		previousValues, err := s.properties.ReadCustomValues(r.Context(), tx, id)
+		if err != nil {
+			refuseInternal(w, err)
+			return
+		}
+		beforeState, err := newPropertyAuditState(prior, previousValues, s.envelope)
+		if err != nil {
+			refuseInternal(w, err)
+			return
+		}
+
 		if err := s.properties.DeleteCustomValues(r.Context(), tx, id); err != nil {
 			refuseInternal(w, err)
 			return
 		}
-		if len(body.CustomValues) > 0 {
-			defs, err := s.loadCustomValueDefinitions(r.Context(), tx, body.CustomValues)
+		customValues := customValueBodies(body.CustomValues)
+		if len(customValues) > 0 {
+			defs, err := s.loadCustomValueDefinitions(r.Context(), tx, customValues)
 			if err != nil {
 				refuseInternal(w, err)
 				return
 			}
-			inputs, apiErr := buildCustomValueInputs(body.CustomValues, defs)
+			inputs, apiErr := buildCustomValueInputs(customValues, defs)
 			if apiErr != nil {
 				WriteError(w, apiErr)
 				return
@@ -317,6 +309,17 @@ func (s *Server) handleUpdateProperty() http.Handler {
 
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
+		afterValues, err := s.properties.ReadCustomValues(r.Context(), tx, id)
+		if err != nil {
+			refuseInternal(w, err)
+			return
+		}
+		afterState, err := newPropertyAuditState(updated, afterValues, s.envelope)
+		if err != nil {
+			refuseInternal(w, err)
+			return
+		}
+		before, after := diffPropertyAuditStates(beforeState, afterState)
 		if err := audit.Write(r.Context(), tx, audit.Entry{
 			Action:         audit.PropertyModified,
 			ActorAccountID: &actorID,
@@ -325,6 +328,8 @@ func (s *Server) handleUpdateProperty() http.Handler {
 			EntityType:     audit.EntityProperty,
 			EntityID:       updated.Code,
 			SourceIP:       ClientIP(r),
+			Before:         before,
+			After:          after,
 		}); err != nil {
 			refuseInternal(w, err)
 			return
@@ -367,7 +372,7 @@ func (s *Server) handleChangePropertyCode() http.Handler {
 			return
 		}
 
-		var body propertyChangeCodeBody
+		var body gen.ChangePropertyCodeJSONBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -407,6 +412,8 @@ func (s *Server) handleChangePropertyCode() http.Handler {
 
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
+		before := map[string]any{"code": oldCode}
+		after := map[string]any{"code": raw}
 		if err := audit.Write(r.Context(), tx, audit.Entry{
 			Action:         audit.PropertyCodeChanged,
 			ActorAccountID: &actorID,
@@ -415,7 +422,8 @@ func (s *Server) handleChangePropertyCode() http.Handler {
 			EntityType:     audit.EntityProperty,
 			EntityID:       raw,
 			SourceIP:       ClientIP(r),
-			Detail:         map[string]any{"from": oldCode, "to": raw},
+			Before:         before,
+			After:          after,
 		}); err != nil {
 			refuseInternal(w, err)
 			return
@@ -452,10 +460,25 @@ func (s *Server) handleArchiveProperty() http.Handler {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest))
 			return
 		}
-		var body propertyVersionBody
+		var body gen.ArchivePropertyJSONBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
+		}
+		var notePtr *string
+		if body.Note != nil {
+			trimmed := strings.TrimSpace(*body.Note)
+			if trimmed == "" {
+				body.Note = nil
+			} else {
+				if n := len([]rune(trimmed)); n > 500 {
+					WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
+						WithField("note", MsgPropertyArchiveNoteLength))
+					return
+				}
+				note := trimmed
+				notePtr = &note
+			}
 		}
 
 		tx, err := s.pool.Begin(r.Context())
@@ -465,7 +488,18 @@ func (s *Server) handleArchiveProperty() http.Handler {
 		}
 		defer tx.Rollback(r.Context())
 
-		p, err := s.properties.Archive(r.Context(), tx, id, c.Account.ID, body.Version)
+		previous, err := s.properties.FindByID(r.Context(), tx, id)
+		if err != nil {
+			refuseInternal(w, err)
+			return
+		}
+		if previous == nil {
+			_ = tx.Rollback(r.Context())
+			WriteError(w, NewAPIError(http.StatusNotFound, CodeNotFound, MsgPropertyNotFound))
+			return
+		}
+
+		p, err := s.properties.Archive(r.Context(), tx, id, c.Account.ID, body.Version, notePtr)
 		if err != nil {
 			switch err {
 			case properties.ErrArchived:
@@ -480,6 +514,11 @@ func (s *Server) handleArchiveProperty() http.Handler {
 		}
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
+		before := map[string]any{"isArchived": false, "archiveNote": nil}
+		after := map[string]any{"isArchived": true, "archiveNote": nil}
+		if p.ArchiveNote != nil {
+			after["archiveNote"] = *p.ArchiveNote
+		}
 		if err := audit.Write(r.Context(), tx, audit.Entry{
 			Action:         audit.PropertyArchived,
 			ActorAccountID: &actorID,
@@ -488,6 +527,8 @@ func (s *Server) handleArchiveProperty() http.Handler {
 			EntityType:     audit.EntityProperty,
 			EntityID:       p.Code,
 			SourceIP:       ClientIP(r),
+			Before:         before,
+			After:          after,
 		}); err != nil {
 			refuseInternal(w, err)
 			return
@@ -524,7 +565,7 @@ func (s *Server) handleRestoreProperty() http.Handler {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest))
 			return
 		}
-		var body propertyVersionBody
+		var body gen.RestorePropertyJSONBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -536,6 +577,17 @@ func (s *Server) handleRestoreProperty() http.Handler {
 			return
 		}
 		defer tx.Rollback(r.Context())
+
+		previous, err := s.properties.FindByID(r.Context(), tx, id)
+		if err != nil {
+			refuseInternal(w, err)
+			return
+		}
+		if previous == nil {
+			_ = tx.Rollback(r.Context())
+			WriteError(w, NewAPIError(http.StatusNotFound, CodeNotFound, MsgPropertyNotFound))
+			return
+		}
 
 		p, err := s.properties.Restore(r.Context(), tx, id, c.Account.ID, body.Version)
 		if err != nil {
@@ -552,6 +604,11 @@ func (s *Server) handleRestoreProperty() http.Handler {
 		}
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
+		before := map[string]any{"isArchived": true, "archiveNote": nil}
+		if previous.ArchiveNote != nil {
+			before["archiveNote"] = *previous.ArchiveNote
+		}
+		after := map[string]any{"isArchived": false, "archiveNote": nil}
 		if err := audit.Write(r.Context(), tx, audit.Entry{
 			Action:         audit.PropertyRestored,
 			ActorAccountID: &actorID,
@@ -560,6 +617,8 @@ func (s *Server) handleRestoreProperty() http.Handler {
 			EntityType:     audit.EntityProperty,
 			EntityID:       p.Code,
 			SourceIP:       ClientIP(r),
+			Before:         before,
+			After:          after,
 		}); err != nil {
 			refuseInternal(w, err)
 			return

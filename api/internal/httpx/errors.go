@@ -23,6 +23,11 @@ const (
 	CodeVersionConflict        = "version_conflict"
 	CodeArchived               = "archived"
 	CodePasswordChangeRequired = "password_change_required"
+	CodeTooLarge               = "too_large"
+	CodeUnsupportedType        = "unsupported_type"
+	CodeIntegrityFailed        = "integrity_failed"
+	CodeIntegrity              = "integrity"
+	CodeKeyUnavailable         = "key_unavailable"
 	CodeInternalError          = "internal_error"
 )
 

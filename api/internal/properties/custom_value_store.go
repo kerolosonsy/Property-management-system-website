@@ -14,14 +14,36 @@ import (
 // a property. Exactly one of the scalar members is set, matching the field's
 // type. Multiselect is the only exception: it carries a set of choices.
 type CustomValueInput struct {
-	FieldID   uuid.UUID
-	FieldType CustomFieldType
+	FieldID     uuid.UUID
+	FieldType   CustomFieldType
 	IsSensitive bool
 
-	Text     *string
-	Checked  *bool
-	ChoiceID *uuid.UUID
+	Text      *string
+	Checked   *bool
+	ChoiceID  *uuid.UUID
 	ChoiceIDs []uuid.UUID
+}
+
+// DeleteCustomValuesForFields removes only the named custom-field values.
+// Undo uses this to restore a partial audit diff without disturbing fields
+// that were not part of the original change.
+func (s *Store) DeleteCustomValuesForFields(
+	ctx context.Context, tx pgx.Tx, propertyID uuid.UUID, fieldIDs []uuid.UUID,
+) error {
+	if len(fieldIDs) == 0 {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM property_field_value
+		WHERE property_id = $1 AND custom_field_id = ANY($2)`, propertyID, fieldIDs); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM property_field_multi_value
+		WHERE property_id = $1 AND custom_field_id = ANY($2)`, propertyID, fieldIDs); err != nil {
+		return err
+	}
+	return nil
 }
 
 // SavedValue is what the store reads back. Decryption of sensitive values is
@@ -205,17 +227,23 @@ func (s *Store) ReadCustomValues(ctx context.Context, tx pgx.Tx, propertyID uuid
 		return nil, err
 	}
 	defer multiRows.Close()
+	multiIndexes := make(map[uuid.UUID]int)
 	for multiRows.Next() {
 		var fieldID, choiceID uuid.UUID
 		if err := multiRows.Scan(&fieldID, &choiceID); err != nil {
 			return nil, err
 		}
+		if index, ok := multiIndexes[fieldID]; ok {
+			out[index].ChoiceIDs = append(out[index].ChoiceIDs, choiceID)
+			continue
+		}
 		out = append(out, StoredValue{
-			FieldID:   fieldID,
-			FieldType: FieldMultiselect,
+			FieldID:       fieldID,
+			FieldType:     FieldMultiselect,
 			IsMultiselect: true,
-			ChoiceIDs: []uuid.UUID{choiceID},
+			ChoiceIDs:     []uuid.UUID{choiceID},
 		})
+		multiIndexes[fieldID] = len(out) - 1
 	}
 	if err := multiRows.Err(); err != nil {
 		return nil, err
@@ -227,18 +255,18 @@ func (s *Store) ReadCustomValues(ctx context.Context, tx pgx.Tx, propertyID uuid
 // filled only when the field is sensitive; the plaintext is never present
 // here (the handler decrypts).
 type StoredValue struct {
-	FieldID      uuid.UUID
-	FieldType    CustomFieldType
-	IsSensitive  bool
+	FieldID       uuid.UUID
+	FieldType     CustomFieldType
+	IsSensitive   bool
 	IsMultiselect bool
-	Text         *string
-	Bool         *bool
-	ChoiceID     *uuid.UUID
-	ChoiceIDs    []uuid.UUID
-	CipherValue  []byte
-	CipherNonce  []byte
-	WrappedDEK   []byte
-	WrapNonce    []byte
+	Text          *string
+	Bool          *bool
+	ChoiceID      *uuid.UUID
+	ChoiceIDs     []uuid.UUID
+	CipherValue   []byte
+	CipherNonce   []byte
+	WrappedDEK    []byte
+	WrapNonce     []byte
 }
 
 // Decrypt returns the plaintext bytes for a sensitive value using the supplied

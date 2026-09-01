@@ -17,6 +17,18 @@ export interface AdvancedSearch {
     includeArchived?: boolean;
     page?: number;
     pageSize?: AdvancedSearch.PageSizeEnum;
+    /**
+     * Matches text extracted from the property\'s attachments, after the same Arabic normalisation as the name. Sensitive attachments are never searched, for any role (FR-022b, FR-029). Combines with every other filter by AND, like all the rest. 
+     */
+    documentText?: string;
+    /**
+     * Matches an attachment\'s description or its original filename, after the same Arabic normalisation as property names. Unlike `documentText`, this searches **sensitive attachments too**: sensitivity conceals a document\'s contents, never its existence or its description (FR-022d). 
+     */
+    attachmentName?: string;
+    /**
+     * `yes` returns only properties that hold at least one attachment, `no` only those that hold none, `any` does not constrain. Combines with every other filter by AND. 
+     */
+    hasAttachments?: AdvancedSearch.HasAttachmentsEnum;
     customFilters?: Array<CustomFieldFilter>;
 }
 export namespace AdvancedSearch {
@@ -27,6 +39,12 @@ export namespace AdvancedSearch {
         NUMBER_100: 100,
     } as const;
     export type PageSizeEnum = typeof PageSizeEnum[keyof typeof PageSizeEnum];
+    export const HasAttachmentsEnum = {
+        Any: 'any',
+        Yes: 'yes',
+        No: 'no',
+    } as const;
+    export type HasAttachmentsEnum = typeof HasAttachmentsEnum[keyof typeof HasAttachmentsEnum];
 }
 
 

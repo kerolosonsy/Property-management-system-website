@@ -32,21 +32,50 @@ const PAGE_SIZES = [10, 25, 50, 100] as const;
              into a single control group. -->
         <div class="pms-searchgroup">
           <div class="field">
-            <input id="search" class="input" type="search" [formControl]="searchCtrl"
-                   [attr.aria-label]="msgs.search" [placeholder]="msgs.searchPlaceholder" />
+            <input
+              id="search"
+              class="input"
+              type="search"
+              [formControl]="searchCtrl"
+              [attr.aria-label]="msgs.search"
+              [placeholder]="msgs.searchPlaceholder"
+            />
           </div>
-          <a routerLink="/properties/search" class="btn btn-secondary"
-             [title]="msgs.advancedSearch" [attr.aria-label]="msgs.advancedSearch">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+          <a
+            routerLink="/properties/search"
+            class="btn btn-secondary"
+            [title]="msgs.advancedSearch"
+            [attr.aria-label]="msgs.advancedSearch"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3.5-3.5" />
             </svg>
           </a>
         </div>
 
         <a routerLink="/properties/new" class="btn btn-primary">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <path d="M12 5v14M5 12h14" />
           </svg>
           {{ msgs.addProperty }}
@@ -59,37 +88,21 @@ const PAGE_SIZES = [10, 25, 50, 100] as const;
             <h2>{{ msgs.propertiesAll }}</h2>
             <div class="pms-section-count">{{ rangeLabel() }}</div>
           </div>
-
-          <!-- Type filter as the design's segmented control, not a dropdown. -->
-          <div class="seg" role="group" [attr.aria-label]="msgs.propertyType">
-            <label class="seg-opt">
-              <input type="radio" name="typeFilter" [checked]="typeCtrl.value === ''"
-                     (change)="setType('')" />
-              <span>{{ msgs.allItems }}</span>
-            </label>
-            @for (t of propertyTypes(); track t.id) {
-              <label class="seg-opt">
-                <input type="radio" name="typeFilter" [checked]="typeCtrl.value === t.id"
-                       (change)="setType(t.id)" />
-                <span>{{ t.label }}</span>
-              </label>
-            }
-          </div>
         </div>
 
-      <div class="card elev-sm pms-card-flush">
-        <div class="pms-filters">
-          <div class="field pms-field pms-field-checkbox">
-            <label for="includeArchived">{{ msgs.includeArchived }}</label>
-            <input id="includeArchived" type="checkbox" [formControl]="includeArchivedCtrl" />
+        <div class="card elev-sm pms-card-flush">
+          <div class="pms-filters">
+            <div class="field pms-field pms-field-checkbox">
+              <label for="includeArchived">{{ msgs.includeArchived }}</label>
+              <input id="includeArchived" type="checkbox" [formControl]="includeArchivedCtrl" />
+            </div>
           </div>
-        </div>
 
-        @if (errorMessage(); as msg) {
-          <div class="pms-error-banner">{{ msg }}</div>
-        }
+          @if (errorMessage(); as msg) {
+            <div class="pms-error-banner">{{ msg }}</div>
+          }
 
-        <!-- The table always renders. Its <thead> carries the column filters,
+          <!-- The table always renders. Its <thead> carries the column filters,
              so collapsing it on an empty result would strip away the very
              controls needed to undo the filter that emptied it. -->
           <table class="table">
@@ -106,15 +119,29 @@ const PAGE_SIZES = [10, 25, 50, 100] as const;
                    not to the visible page. -->
               <tr class="pms-colfilter">
                 <th>
-                  <input class="input" type="search" [formControl]="codeCtrl"
-                         [attr.aria-label]="msgs.propertyCode" [placeholder]="msgs.filterPlaceholder" />
+                  <input
+                    class="input"
+                    type="search"
+                    [formControl]="codeCtrl"
+                    [attr.aria-label]="msgs.propertyCode"
+                    [placeholder]="msgs.filterPlaceholder"
+                  />
                 </th>
                 <th>
-                  <input class="input" type="search" [formControl]="nameCtrl"
-                         [attr.aria-label]="msgs.propertyName" [placeholder]="msgs.filterPlaceholder" />
+                  <input
+                    class="input"
+                    type="search"
+                    [formControl]="nameCtrl"
+                    [attr.aria-label]="msgs.propertyName"
+                    [placeholder]="msgs.filterPlaceholder"
+                  />
                 </th>
                 <th>
-                  <select class="input" [formControl]="typeCtrl" [attr.aria-label]="msgs.propertyType">
+                  <select
+                    class="input"
+                    [formControl]="typeCtrl"
+                    [attr.aria-label]="msgs.propertyType"
+                  >
                     <option [ngValue]="''">{{ msgs.allItems }}</option>
                     @for (t of propertyTypes(); track t.id) {
                       <option [ngValue]="t.id">{{ t.label }}</option>
@@ -122,7 +149,11 @@ const PAGE_SIZES = [10, 25, 50, 100] as const;
                   </select>
                 </th>
                 <th>
-                  <select class="input" [formControl]="areaCtrl" [attr.aria-label]="msgs.propertyArea">
+                  <select
+                    class="input"
+                    [formControl]="areaCtrl"
+                    [attr.aria-label]="msgs.propertyArea"
+                  >
                     <option [ngValue]="''">{{ msgs.allItems }}</option>
                     @for (a of areas(); track a.id) {
                       <option [ngValue]="a.id">{{ a.label }}</option>
@@ -135,7 +166,9 @@ const PAGE_SIZES = [10, 25, 50, 100] as const;
             <tbody>
               @for (p of items(); track p.id) {
                 <tr>
-                  <td><a [routerLink]="['/properties', p.id]">{{ p.code }}</a></td>
+                  <td>
+                    <a [routerLink]="['/properties', p.id]">{{ p.code }}</a>
+                  </td>
                   <td>
                     <a [routerLink]="['/properties', p.id]">{{ p.name }}</a>
                     @if (p.isArchived) {
@@ -145,7 +178,7 @@ const PAGE_SIZES = [10, 25, 50, 100] as const;
                   <td>{{ p.propertyType.label }}</td>
                   <td>{{ p.area.label }}</td>
                   <td>
-                    <a [routerLink]="['/properties', p.id]">{{ msgs.edit }}</a>
+                    <a [routerLink]="['/properties', p.id, 'edit']">{{ msgs.edit }}</a>
                   </td>
                 </tr>
               }
@@ -159,8 +192,13 @@ const PAGE_SIZES = [10, 25, 50, 100] as const;
                       {{ msgs.propertyEmptyRegister }}
                     } @else {
                       {{ msgs.propertyNoMatch }}
-                      <button type="button" class="btn btn-secondary pms-clear-inline"
-                              (click)="clearFilters()">{{ msgs.clearAllFilters }}</button>
+                      <button
+                        type="button"
+                        class="btn btn-secondary pms-clear-inline"
+                        (click)="clearFilters()"
+                      >
+                        {{ msgs.clearAllFilters }}
+                      </button>
                     }
                   </td>
                 </tr>
@@ -169,26 +207,36 @@ const PAGE_SIZES = [10, 25, 50, 100] as const;
           </table>
 
           @if (items().length > 0) {
-          <div class="pms-paging">
-            <span>{{ rangeLabel() }}</span>
-            <div class="pms-toolbar-spacer"></div>
-            <label>
-              <select class="input" [formControl]="pageSizeCtrl">
-                @for (n of pageSizes; track n) {
-                  <option [ngValue]="n">{{ n }}</option>
-                }
-              </select>
-            </label>
-            <button type="button" class="btn btn-secondary" (click)="prev()" [disabled]="page() <= 1">
-              {{ msgs.pagePrevious }}
-            </button>
-            <span>{{ format(msgs.pageOf, { page: page() }) }}</span>
-            <button type="button" class="btn btn-secondary" (click)="next()" [disabled]="page() * pageSize() >= totalItems()">
-              {{ msgs.pageNext }}
-            </button>
-          </div>
+            <div class="pms-paging">
+              <span>{{ rangeLabel() }}</span>
+              <div class="pms-toolbar-spacer"></div>
+              <label>
+                <select class="input" [formControl]="pageSizeCtrl">
+                  @for (n of pageSizes; track n) {
+                    <option [ngValue]="n">{{ n }}</option>
+                  }
+                </select>
+              </label>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                (click)="prev()"
+                [disabled]="page() <= 1"
+              >
+                {{ msgs.pagePrevious }}
+              </button>
+              <span>{{ format(msgs.pageOf, { page: page() }) }}</span>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                (click)="next()"
+                [disabled]="page() * pageSize() >= totalItems()"
+              >
+                {{ msgs.pageNext }}
+              </button>
+            </div>
           }
-      </div>
+        </div>
       </div>
     </section>
   `,
@@ -241,10 +289,6 @@ export class PropertiesListComponent implements OnInit {
     this.areaCtrl.setValue('', { emitEvent: false });
     this.page.set(1);
     this.refresh();
-  }
-
-  protected setType(id: string): void {
-    this.typeCtrl.setValue(id);
   }
 
   protected readonly rangeLabel = computed(() => {

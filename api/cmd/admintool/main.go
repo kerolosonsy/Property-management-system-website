@@ -35,6 +35,8 @@ func main() {
 		seedAdmin(os.Args[2:])
 	case "reset-admin":
 		resetAdmin(os.Args[2:])
+	case "backfill-attachment-search":
+		backfillAttachmentSearch(os.Args[2:])
 	case "seed-demo":
 		seedDemo(os.Args[2:])
 	default:
@@ -379,4 +381,62 @@ func seedDemo(args []string) {
 	}
 
 	slog.Info("seeded demo properties", "count", len(pairs))
+}
+
+// backfillAttachmentSearch fills description_normalized and filename_normalized
+// for attachments stored before migration 0023. The canonical form is produced
+// by the Go normaliser rather than an SQL rewrite, so it matches exactly what
+// every other search compares against (research.md D-007).
+func backfillAttachmentSearch(args []string) {
+	fs := flag.NewFlagSet("backfill-attachment-search", flag.ExitOnError)
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+	dsn := os.Getenv("PMS_DATABASE_OWNER_URL")
+	if dsn == "" {
+		fatal("PMS_DATABASE_OWNER_URL must be set (owner role only).")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		fatal("pool: " + err.Error())
+	}
+	defer pool.Close()
+
+	rows, err := pool.Query(ctx, `
+		SELECT id, description, original_filename
+		FROM attachment
+		WHERE description_normalized IS NULL OR filename_normalized IS NULL`)
+	if err != nil {
+		fatal(err)
+	}
+	type row struct {
+		id       uuid.UUID
+		desc     string
+		filename string
+	}
+	var pending []row
+	for rows.Next() {
+		var r row
+		if err := rows.Scan(&r.id, &r.desc, &r.filename); err != nil {
+			rows.Close()
+			fatal(err)
+		}
+		pending = append(pending, r)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		fatal(err)
+	}
+
+	for _, r := range pending {
+		if _, err := pool.Exec(ctx, `
+			UPDATE attachment
+			   SET description_normalized = $2, filename_normalized = $3
+			 WHERE id = $1`,
+			r.id, identity.Canonical(r.desc), identity.Canonical(r.filename)); err != nil {
+			fatal(err)
+		}
+	}
+	slog.Info("backfilled attachment search columns", "rows", len(pending))
 }

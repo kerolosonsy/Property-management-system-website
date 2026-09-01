@@ -2,9 +2,9 @@
 // US3 / US4 / US5 — one property, every stored field, the record section, and
 // the actions that change state.
 
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PropertiesService } from '../../api/api/properties.service';
 import { CustomFieldsService } from '../../api/api/custom-fields.service';
@@ -14,11 +14,13 @@ import { CustomField } from '../../api/model/custom-field.model';
 import { ARABIC_MESSAGES, format } from '../../shared/messages';
 import { ApiError } from '../../core/api-error';
 import { formatCairoDate, renderCustomValues } from './custom-values';
+import { AttachmentsPanelComponent } from './attachments-panel.component';
+import { CloseOnEscapeDirective } from '../../shared/close-on-escape.directive';
 
 @Component({
   selector: 'app-property-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, AttachmentsPanelComponent, CloseOnEscapeDirective],
   template: `
     <section class="pms-page">
       @if (errorMessage(); as msg) {
@@ -64,6 +66,9 @@ import { formatCairoDate, renderCustomValues } from './custom-values';
             @if (p.isArchived) {
               <dt>{{ msgs.propertyArchivedAt }}</dt><dd>{{ formatDate(p.archivedAt) }}</dd>
               <dt>{{ msgs.propertyArchivedBy_ }}</dt><dd>{{ p.archivedBy || '—' }}</dd>
+              @if (p.archiveNote) {
+                <dt>{{ msgs.propertyArchiveNoteLabel }}</dt><dd>{{ p.archiveNote }}</dd>
+              }
             }
           </dl>
 
@@ -83,6 +88,10 @@ import { formatCairoDate, renderCustomValues } from './custom-values';
           }
         </div>
 
+        @if (!p.isArchived) {
+          <app-attachments-panel [propertyId]="p.id"></app-attachments-panel>
+        }
+
         <div class="card blueprint elev-sm">
           <i class="corner tl"></i><i class="corner tr"></i>
           <i class="corner bl"></i><i class="corner br"></i>
@@ -100,10 +109,19 @@ import { formatCairoDate, renderCustomValues } from './custom-values';
     </section>
 
     @if (confirmArchive(); as p) {
-      <div class="pms-modal-backdrop" (click)="cancelArchive()">
+      <div class="pms-modal-backdrop" (click)="cancelArchive()" [pmsCloseOnEscape]="cancelArchive">
         <div class="pms-modal" (click)="$event.stopPropagation()">
           <h2>{{ msgs.propertyArchivedTitle }}</h2>
           <p>{{ format(msgs.propertyArchivedQ, { name: p.name }) }}</p>
+          <div class="field pms-field">
+            <label for="archiveNote">{{ msgs.propertyArchiveNoteLabel }}</label>
+            <textarea id="archiveNote" class="input" rows="3" [formControl]="archiveNoteCtrl"
+                      [placeholder]="msgs.propertyArchiveNotePlaceholder"
+                      [attr.aria-describedby]="archiveNoteError() ? 'archiveNoteError' : null"></textarea>
+            @if (archiveNoteError(); as e) {
+              <div id="archiveNoteError" class="pms-field-error">{{ e }}</div>
+            }
+          </div>
           <div class="pms-modal-actions">
             <button type="button" class="btn btn-secondary" (click)="cancelArchive()">{{ msgs.cancel }}</button>
             <button type="button" class="btn btn-primary" (click)="doArchive()" [disabled]="archiveSaving()">
@@ -115,10 +133,13 @@ import { formatCairoDate, renderCustomValues } from './custom-values';
     }
 
     @if (confirmRestore(); as p) {
-      <div class="pms-modal-backdrop" (click)="cancelRestore()">
+      <div class="pms-modal-backdrop" (click)="cancelRestore()" [pmsCloseOnEscape]="cancelRestore">
         <div class="pms-modal" (click)="$event.stopPropagation()">
           <h2>{{ msgs.propertyRestoreTitle }}</h2>
           <p>{{ format(msgs.propertyRestoreQ, { name: p.name }) }}</p>
+          @if (p.archiveNote) {
+            <p>{{ msgs.propertyArchiveNotePrevious }}: {{ p.archiveNote }}</p>
+          }
           <div class="pms-modal-actions">
             <button type="button" class="btn btn-secondary" (click)="cancelRestore()">{{ msgs.cancel }}</button>
             <button type="button" class="btn btn-primary" (click)="doRestore()" [disabled]="restoreSaving()">
@@ -154,6 +175,8 @@ export class PropertyDetailComponent implements OnInit {
   protected readonly codeSaving = signal(false);
 
   protected readonly codeCtrl = new FormControl('', { nonNullable: true });
+  protected readonly archiveNoteCtrl = new FormControl('', { nonNullable: true });
+  protected readonly archiveNoteError = signal<string | null>(null);
 
   protected readonly renderedValues = computed(() =>
     renderCustomValues(this.fields(), this.property()?.customValues ?? []),
@@ -195,27 +218,55 @@ export class PropertyDetailComponent implements OnInit {
 
   protected askArchive(): void {
     const p = this.property();
-    if (p) this.confirmArchive.set(p);
+    if (p) {
+      this.archiveNoteCtrl.setValue('');
+      this.archiveNoteError.set(null);
+      this.confirmArchive.set(p);
+    }
   }
   protected cancelArchive(): void {
     this.confirmArchive.set(null);
+    this.archiveNoteCtrl.setValue('');
+    this.archiveNoteError.set(null);
   }
   protected doArchive(): void {
     const p = this.confirmArchive();
     if (!p) return;
+    const note = this.archiveNoteCtrl.value.trim();
+    if (note.length > 500) {
+      this.archiveNoteError.set(this.msgs.propertyArchiveNoteLength);
+      return;
+    }
     this.archiveSaving.set(true);
     this.propertiesSvc
-      .archiveProperty({ propertyId: p.id, archivePropertyRequest: { version: p.version } }, 'body')
+      .archiveProperty(
+        {
+          propertyId: p.id,
+          archivePropertyRequest: {
+            version: p.version,
+            note: note ? note : undefined,
+          },
+        },
+        'body',
+      )
       .subscribe({
         next: (updated) => {
           this.archiveSaving.set(false);
           this.confirmArchive.set(null);
+          this.archiveNoteCtrl.setValue('');
+          this.archiveNoteError.set(null);
           this.property.set(updated);
           this.codeCtrl.setValue(updated.code);
         },
         error: (err: ApiError) => {
           this.archiveSaving.set(false);
-          this.errorMessage.set(err.message || this.msgs.internalError);
+          if (err.fields?.['note']) {
+            this.archiveNoteError.set(err.fields['note']);
+          } else if (err.code === 'invalid_request') {
+            this.archiveNoteError.set(err.message || this.msgs.propertyArchiveNoteLength);
+          } else {
+            this.errorMessage.set(err.message || this.msgs.internalError);
+          }
         },
       });
   }
@@ -232,7 +283,7 @@ export class PropertyDetailComponent implements OnInit {
     if (!p) return;
     this.restoreSaving.set(true);
     this.propertiesSvc
-      .restoreProperty({ propertyId: p.id, archivePropertyRequest: { version: p.version } }, 'body')
+      .restoreProperty({ propertyId: p.id, restorePropertyRequest: { version: p.version } }, 'body')
       .subscribe({
         next: (updated) => {
           this.restoreSaving.set(false);

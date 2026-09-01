@@ -104,6 +104,11 @@ export const routes: Routes = [
     canActivate: [requireSignedInGuard, requirePasswordChangedGuard],
     loadComponent: () => import('./features/properties/property-detail.component').then(m => m.PropertyDetailComponent),
   },
+  {
+    path: 'properties/:propertyId/attachments/:attachmentId/text',
+    canActivate: [requireSignedInGuard, requirePasswordChangedGuard],
+    loadComponent: () => import('./features/properties/attachment-text.component').then(m => m.AttachmentTextComponent),
+  },
 
   // Old top-level paths kept as redirects so existing links and bookmarks do
   // not break now that both live under Settings.

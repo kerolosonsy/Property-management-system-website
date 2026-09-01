@@ -8,6 +8,7 @@
  * Do not edit the class manually.
  */
 import { Lookup } from './lookup.model';
+import { PropertySummaryMatchedAttachmentsInner } from './property-summary-matched-attachments-inner.model';
 
 
 export interface Property { 
@@ -23,6 +24,10 @@ export interface Property {
     propertyType: Lookup;
     area: Lookup;
     isArchived: boolean;
+    /**
+     * Present only when `documentText` was part of the search. Names the attachments whose extracted text matched, so a hit says *why* it matched rather than only *that* it did (FR-026). 
+     */
+    matchedAttachments?: Array<PropertySummaryMatchedAttachmentsInner>;
     version: number;
     createdAt: string;
     createdBy: string;
@@ -30,5 +35,6 @@ export interface Property {
     updatedBy: string;
     archivedAt?: string | null;
     archivedBy?: string | null;
+    archiveNote?: string | null;
 }
 

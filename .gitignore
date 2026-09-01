@@ -2,6 +2,15 @@
 .env
 infra/certs/
 
+# Attachment store (feature 003-property-attachments-ocr). The path is
+# configured by PMS_ATTACHMENT_STORE and MUST be outside the repo working
+# tree. These repository-root conventions catch common accidental local
+# stores without hiding source packages that happen to share the same name.
+/attachments/
+/attachments-store/
+/var/attachments/
+/pms-attachments/
+
 # Web
 web/node_modules/
 web/dist/

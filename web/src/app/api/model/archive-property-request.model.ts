@@ -11,5 +11,9 @@
 
 export interface ArchivePropertyRequest { 
     version: number;
+    /**
+     * Optional Arabic note explaining why the property is being archived. Shown on the detail while archived and in the audit row\'s detail; cleared on restore. 
+     */
+    note?: string;
 }
 

@@ -2,10 +2,9 @@ package httpx
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"strings"
 
+	"pms/internal/gen"
 	"pms/internal/properties"
 
 	"github.com/google/uuid"
@@ -24,16 +23,12 @@ type customFieldDef struct {
 // FK violation inside the property write.
 func (s *Server) loadCustomValueDefinitions(
 	ctx context.Context, tx pgx.Tx,
-	bodies []propertyCustomValueBody,
+	bodies []gen.CustomFieldValue,
 ) (map[uuid.UUID]customFieldDef, error) {
 	out := map[uuid.UUID]customFieldDef{}
 	ids := make([]uuid.UUID, 0, len(bodies))
 	for _, b := range bodies {
-		fid, err := uuid.Parse(strings.TrimSpace(b.FieldID))
-		if err != nil {
-			return nil, err
-		}
-		ids = append(ids, fid)
+		ids = append(ids, b.FieldId)
 	}
 	if len(ids) == 0 {
 		return out, nil
@@ -59,25 +54,21 @@ func (s *Server) loadCustomValueDefinitions(
 // the store consumes, validating the field type for each value. A bad type
 // returns a 400 with a field-level Arabic message.
 func buildCustomValueInputs(
-	bodies []propertyCustomValueBody,
+	bodies []gen.CustomFieldValue,
 	defs map[uuid.UUID]customFieldDef,
 ) ([]properties.CustomValueInput, *APIError) {
 	out := make([]properties.CustomValueInput, 0, len(bodies))
 	for i, b := range bodies {
-		fid, err := uuid.Parse(strings.TrimSpace(b.FieldID))
-		if err != nil {
-			return nil, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
-				WithField("customValues", MsgInvalidRequest)
-		}
+		fid := b.FieldId
 		def, ok := defs[fid]
 		if !ok {
 			return nil, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
 				WithField("customValues["+itoa(i)+"].fieldId", MsgCustomFieldNotFound)
 		}
 		in := properties.CustomValueInput{
-			FieldID:      fid,
-			FieldType:    def.FieldType,
-			IsSensitive:  def.IsSensitive,
+			FieldID:     fid,
+			FieldType:   def.FieldType,
+			IsSensitive: def.IsSensitive,
 		}
 		switch def.FieldType {
 		case properties.FieldText:
@@ -95,22 +86,13 @@ func buildCustomValueInputs(
 				in.Checked = &v
 			}
 		case properties.FieldDropdown:
-			if b.ChoiceID != nil && *b.ChoiceID != "" {
-				cid, err := uuid.Parse(*b.ChoiceID)
-				if err != nil {
-					return nil, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
-						WithField("customValues["+itoa(i)+"].choiceId", MsgInvalidRequest)
-				}
+			if b.ChoiceId != nil {
+				cid := *b.ChoiceId
 				in.ChoiceID = &cid
 			}
 		case properties.FieldMultiselect:
-			for _, raw := range b.ChoiceIDs {
-				cid, err := uuid.Parse(raw)
-				if err != nil {
-					return nil, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
-						WithField("customValues["+itoa(i)+"].choiceIds", MsgInvalidRequest)
-				}
-				in.ChoiceIDs = append(in.ChoiceIDs, cid)
+			if b.ChoiceIds != nil {
+				in.ChoiceIDs = append(in.ChoiceIDs, *b.ChoiceIds...)
 			}
 		default:
 			return nil, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
@@ -119,6 +101,13 @@ func buildCustomValueInputs(
 		out = append(out, in)
 	}
 	return out, nil
+}
+
+func customValueBodies(values *[]gen.CustomFieldValue) []gen.CustomFieldValue {
+	if values == nil {
+		return nil
+	}
+	return *values
 }
 
 // itoa small local helper to keep field-error keys readable.
@@ -144,6 +133,3 @@ func itoa(i int) string {
 	}
 	return string(b[pos:])
 }
-
-// errorIfUnused keeps imports tidy across revisions.
-var _ = errors.New

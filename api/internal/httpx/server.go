@@ -5,9 +5,12 @@ import (
 	"log/slog"
 	"net/http"
 
+	"pms/internal/attachments"
 	"pms/internal/auth"
+	"pms/internal/blobstore"
 	"pms/internal/config"
 	pmscrypto "pms/internal/crypto"
+	"pms/internal/extract"
 	"pms/internal/identity"
 	"pms/internal/properties"
 
@@ -16,12 +19,15 @@ import (
 
 // Server bundles the dependencies the HTTP handlers need.
 type Server struct {
-	cfg       *config.Config
-	pool      *pgxpool.Pool
-	identity  *identity.Store
-	properties *properties.Store
-	envelope  *pmscrypto.Envelope
-	delay     auth.DelaySchedule
+	cfg          *config.Config
+	pool         *pgxpool.Pool
+	identity     *identity.Store
+	properties   *properties.Store
+	envelope     *pmscrypto.Envelope
+	attachments  *attachments.Store
+	blobstore    *blobstore.Store
+	capabilities extract.Capabilities
+	delay        auth.DelaySchedule
 }
 
 // auditService is unused at the type level; audit rows are written inline by
@@ -32,13 +38,22 @@ func NewServer(
 	props *properties.Store, env *pmscrypto.Envelope,
 ) *Server {
 	return &Server{
-		cfg:       cfg,
-		pool:      pool,
-		identity:  store,
-		properties: props,
-		envelope:  env,
-		delay:     auth.DelaySchedule{},
+		cfg:         cfg,
+		pool:        pool,
+		identity:    store,
+		properties:  props,
+		envelope:    env,
+		attachments: &attachments.Store{Pool: pool},
+		blobstore:   blobstore.New(cfg.AttachmentStore),
+		delay:       auth.DelaySchedule{},
 	}
+}
+
+// SetCapabilities is called from main once the startup probe has finished.
+// It is split out so this package does not import context just for the
+// probe call.
+func (s *Server) SetCapabilities(c extract.Capabilities) {
+	s.capabilities = c
 }
 
 // Routes returns the application's http.Handler. The generated handler is
@@ -57,6 +72,7 @@ func (s *Server) Routes(genHandler http.Handler) http.Handler {
 	mux.Handle("POST /api/v1/auth/logout", s.authed(anyRole, genHandler.ServeHTTP))
 	mux.Handle("GET /api/v1/auth/me", s.authed(anyRole, genHandler.ServeHTTP))
 	mux.Handle("POST /api/v1/auth/password", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("GET /api/v1/dashboard", s.authed(anyRole, genHandler.ServeHTTP))
 
 	// Lookups — read by any signed-in user (filter bar needs them).
 	mux.Handle("GET /api/v1/property-types", s.authed(anyRole, genHandler.ServeHTTP))
@@ -76,6 +92,20 @@ func (s *Server) Routes(genHandler http.Handler) http.Handler {
 	mux.Handle("POST /api/v1/properties/{propertyId}/archive", s.authed(anyRole, genHandler.ServeHTTP))
 	mux.Handle("POST /api/v1/properties/{propertyId}/restore", s.authed(anyRole, genHandler.ServeHTTP))
 
+	// Property attachments (feature 003-property-attachments-ocr).
+	mux.Handle("GET /api/v1/properties/{propertyId}/attachments", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("POST /api/v1/properties/{propertyId}/attachments", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("GET /api/v1/attachments/{attachmentId}", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("PATCH /api/v1/attachments/{attachmentId}", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("DELETE /api/v1/attachments/{attachmentId}", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("GET /api/v1/attachments/{attachmentId}/content", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("GET /api/v1/attachments/{attachmentId}/text", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("PUT /api/v1/attachments/{attachmentId}/text", s.authed(anyRole, genHandler.ServeHTTP))
+	mux.Handle("POST /api/v1/attachments/{attachmentId}/text/reextract", s.authed(anyRole, genHandler.ServeHTTP))
+	// Document search — registered before {attachmentId} siblings because
+	// /attachments/search is a static segment.
+	mux.Handle("POST /api/v1/attachments/search", s.authed(anyRole, genHandler.ServeHTTP))
+
 	// Administrator only — accounts, audit records, and the four
 	// configuration write operations on lookups and custom fields.
 	mux.Handle("GET /api/v1/users", s.authed(adminRole, genHandler.ServeHTTP))
@@ -84,6 +114,7 @@ func (s *Server) Routes(genHandler http.Handler) http.Handler {
 	mux.Handle("PATCH /api/v1/users/{userId}", s.authed(adminRole, genHandler.ServeHTTP))
 	mux.Handle("POST /api/v1/users/{userId}/password", s.authed(adminRole, genHandler.ServeHTTP))
 	mux.Handle("GET /api/v1/audit-records", s.authed(adminRole, genHandler.ServeHTTP))
+	mux.Handle("POST /api/v1/audit-records/{recordId}/undo", s.authed(adminRole, genHandler.ServeHTTP))
 
 	mux.Handle("POST /api/v1/property-types", s.authed(adminRole, genHandler.ServeHTTP))
 	mux.Handle("PUT /api/v1/property-types/{lookupId}", s.authed(adminRole, genHandler.ServeHTTP))

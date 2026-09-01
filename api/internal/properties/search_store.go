@@ -16,11 +16,11 @@ import (
 type Operator string
 
 const (
-	OpContains   Operator = "contains"
-	OpEquals     Operator = "equals"
+	OpContains    Operator = "contains"
+	OpEquals      Operator = "equals"
 	OpIncludesAll Operator = "includesAll"
-	OpIsTrue     Operator = "isTrue"
-	OpIsFalse    Operator = "isFalse"
+	OpIsTrue      Operator = "isTrue"
+	OpIsFalse     Operator = "isFalse"
 )
 
 // ErrUnknownField is returned when a filter references a custom field that
@@ -51,6 +51,9 @@ type SearchInputs struct {
 	PropertyTypeID  *uuid.UUID
 	AreaID          *uuid.UUID
 	IncludeArchived bool
+	DocumentText    string // matches text extracted from the property's attachments
+	AttachmentName  string // matches an attachment's description or original filename
+	HasAttachments  string // "any" (default), "yes", or "no"
 	Page            int
 	PageSize        int
 	CustomFilters   []SearchFilter
@@ -141,6 +144,54 @@ func (s *Store) SearchProperties(
 		idx++
 	}
 
+	// Document text is a filter like any other and combines by AND. The
+	// EXISTS keeps one property to one row however many of its attachments
+	// match. Sensitive attachments carry no body_normalized at all, so this
+	// cannot reach them however the query is written (research.md D-008) —
+	// the exclusion is structural, not a predicate that could be forgotten.
+	documentPattern := ""
+	if dt := strings.TrimSpace(in.DocumentText); dt != "" {
+		documentPattern = "%" + identity.CanonicalQuery(dt) + "%"
+		where = append(where, `EXISTS (
+			SELECT 1 FROM attachment a
+			JOIN attachment_text t ON t.attachment_id = a.id
+			WHERE a.property_id = p.id
+			  AND t.body_normalized IS NOT NULL
+			  AND t.body_normalized LIKE $`+itoa(idx)+`)`)
+		args = append(args, documentPattern)
+		idx++
+	}
+	// Attachment name: description or original filename. Unlike document text
+	// this DOES reach sensitive attachments — sensitivity conceals a document's
+	// contents, never its existence or what it is called (FR-022d).
+	//
+	// The normalised columns are populated by the Go normaliser; rows predating
+	// migration 0023 hold NULL until the backfill runs, so a raw case-insensitive
+	// match stands in for them rather than making them invisible.
+	if an := strings.TrimSpace(in.AttachmentName); an != "" {
+		canonical := "%" + identity.CanonicalQuery(an) + "%"
+		raw := "%" + strings.ToLower(an) + "%"
+		where = append(where, `EXISTS (
+			SELECT 1 FROM attachment a
+			WHERE a.property_id = p.id
+			  AND (
+			        a.description_normalized LIKE $`+itoa(idx)+`
+			     OR a.filename_normalized    LIKE $`+itoa(idx)+`
+			     OR (a.description_normalized IS NULL AND lower(a.description)       LIKE $`+itoa(idx+1)+`)
+			     OR (a.filename_normalized    IS NULL AND lower(a.original_filename) LIKE $`+itoa(idx+1)+`)
+			  ))`)
+		args = append(args, canonical, raw)
+		idx += 2
+	}
+
+	// Whether the property holds any attachment at all.
+	switch strings.TrimSpace(in.HasAttachments) {
+	case "yes":
+		where = append(where, `EXISTS (SELECT 1 FROM attachment a WHERE a.property_id = p.id)`)
+	case "no":
+		where = append(where, `NOT EXISTS (SELECT 1 FROM attachment a WHERE a.property_id = p.id)`)
+	}
+
 	if in.PropertyTypeID != nil {
 		where = append(where, "p.property_type_id = $"+itoa(idx))
 		args = append(args, *in.PropertyTypeID)
@@ -209,7 +260,56 @@ func (s *Store) SearchProperties(
 		}
 		out = append(out, p)
 	}
-	return out, total, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	rows.Close()
+
+	if documentPattern != "" && len(out) > 0 {
+		matchesByProperty, err := findMatchedAttachments(ctx, tx, out, documentPattern)
+		if err != nil {
+			return nil, 0, err
+		}
+		for index := range out {
+			out[index].MatchedAttachments = matchesByProperty[out[index].ID]
+		}
+	}
+	return out, total, nil
+}
+
+func findMatchedAttachments(
+	ctx context.Context,
+	tx pgx.Tx,
+	propertyRows []Property,
+	documentPattern string,
+) (map[uuid.UUID][]MatchedAttachment, error) {
+	propertyIDs := make([]uuid.UUID, 0, len(propertyRows))
+	for _, propertyRow := range propertyRows {
+		propertyIDs = append(propertyIDs, propertyRow.ID)
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT a.property_id, a.id, a.description
+		FROM attachment a
+		JOIN attachment_text t ON t.attachment_id = a.id
+		WHERE a.property_id = ANY($1)
+		  AND t.body_normalized IS NOT NULL
+		  AND t.body_normalized LIKE $2
+		ORDER BY a.property_id, a.created_at, a.id`, propertyIDs, documentPattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	matches := make(map[uuid.UUID][]MatchedAttachment, len(propertyRows))
+	for rows.Next() {
+		var propertyID uuid.UUID
+		var attachment MatchedAttachment
+		if err := rows.Scan(&propertyID, &attachment.ID, &attachment.Description); err != nil {
+			return nil, err
+		}
+		matches[propertyID] = append(matches[propertyID], attachment)
+	}
+	return matches, rows.Err()
 }
 
 // customClause is the result of building one filter's contribution to the

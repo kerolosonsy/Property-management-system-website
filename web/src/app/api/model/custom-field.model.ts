@@ -20,6 +20,10 @@ export interface CustomField {
      */
     isSensitive: boolean;
     choices: Array<CustomFieldChoice>;
+    /**
+     * Number of properties (active or archived) holding a value for this field. Sensitivity and type are fixed once this is non-zero (FR-027s5, FR-027g). Always zero for fields created in this response. 
+     */
+    valuesCount?: number;
 }
 export namespace CustomField {
 }

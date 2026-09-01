@@ -6,6 +6,7 @@ import (
 
 	"pms/internal/audit"
 	"pms/internal/auth"
+	"pms/internal/gen"
 )
 
 func (s *Server) handleSignOut() http.Handler {
@@ -35,7 +36,7 @@ func (s *Server) handleSignOut() http.Handler {
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
 		if err := audit.Write(r.Context(), tx, audit.Entry{
-			Action:        audit.SignOut,
+			Action:         audit.SignOut,
 			ActorAccountID: &actorID,
 			ActorUsername:  c.Account.Username,
 			ActorRole:      &actorRole,
@@ -87,14 +88,9 @@ func (s *Server) handleMe() http.Handler {
 	})
 }
 
-type changePasswordBody struct {
-	CurrentPassword string `json:"currentPassword"`
-	NewPassword     string `json:"newPassword"`
-}
-
 func (s *Server) handleChangePassword() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body changePasswordBody
+		var body gen.ChangeOwnPasswordJSONBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -155,25 +151,25 @@ func (s *Server) handleChangePassword() http.Handler {
 		actorID := acct.ID
 		actorRole := acct.Role
 		if err := audit.Write(r.Context(), tx, audit.Entry{
-			Action:        audit.PasswordChanged,
-			ActorAccountID: &actorID,
-			ActorUsername:  acct.Username,
-			ActorRole:      &actorRole,
+			Action:          audit.PasswordChanged,
+			ActorAccountID:  &actorID,
+			ActorUsername:   acct.Username,
+			ActorRole:       &actorRole,
 			TargetAccountID: &actorID,
 			TargetUsername:  strPtr(acct.Username),
-			SourceIP:       ClientIP(r),
+			SourceIP:        ClientIP(r),
 		}); err != nil {
 			refuseInternal(w, err)
 			return
 		}
 		if err := audit.Write(r.Context(), tx, audit.Entry{
-			Action:        audit.SessionsInvalidated,
-			ActorAccountID: &actorID,
-			ActorUsername:  acct.Username,
-			ActorRole:      &actorRole,
+			Action:          audit.SessionsInvalidated,
+			ActorAccountID:  &actorID,
+			ActorUsername:   acct.Username,
+			ActorRole:       &actorRole,
 			TargetAccountID: &actorID,
 			TargetUsername:  strPtr(acct.Username),
-			SourceIP:       ClientIP(r),
+			SourceIP:        ClientIP(r),
 		}); err != nil {
 			refuseInternal(w, err)
 			return

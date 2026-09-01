@@ -15,7 +15,10 @@
 
 @use 'styles/design-system.css';
 
-html, body { height: 100%; }
+html,
+body {
+  height: 100%;
+}
 
 // Heading scale for application screens.
 //
@@ -24,16 +27,29 @@ html, body { height: 100%; }
 // render it: every <h1> in the design is overridden inline to 25px and every
 // <h2> to 20px, because a screen heading is not a display heading. These rules
 // put the application at the sizes the design actually shows.
-.pms-page h1, .pms-auth-card h1 { font-size: 25px; }
-.pms-page h2, .pms-auth-card h2 { font-size: 20px; }
-.pms-page h3, .pms-auth-card h3 { font-size: 17px; }
+.pms-page h1,
+.pms-auth-card h1 {
+  font-size: 25px;
+}
+.pms-page h2,
+.pms-auth-card h2 {
+  font-size: 20px;
+}
+.pms-page h3,
+.pms-auth-card h3 {
+  font-size: 17px;
+}
 
-a:hover { text-decoration: underline; }
+a:hover {
+  text-decoration: underline;
+}
 
 // — layout —
 
 .pms-page {
-  padding: var(--space-6);
+  // No block-start padding: the view header is sticky and must meet the top of
+  // the scroll container, or content would show through the gap above it.
+  padding: 0 var(--space-6) var(--space-6);
   max-inline-size: 1100px;
   margin-inline: auto;
 }
@@ -61,10 +77,15 @@ a:hover { text-decoration: underline; }
     font-size: 18px;
   }
 
-  nav { display: flex; gap: var(--space-4); }
+  nav {
+    display: flex;
+    gap: var(--space-4);
+  }
 }
 
-.pms-toolbar-spacer { flex: 1; }
+.pms-toolbar-spacer {
+  flex: 1;
+}
 
 .pms-toolbar-user {
   display: flex;
@@ -84,6 +105,12 @@ a:hover { text-decoration: underline; }
   margin-block-start: 4px;
   font-size: 12px;
   color: var(--color-accent-700);
+}
+
+.pms-field-hint {
+  margin-block-start: 4px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
 }
 
 // — feedback —
@@ -156,7 +183,10 @@ a:hover { text-decoration: underline; }
   font-size: 20px;
 }
 
-.pms-auth-sub { font-size: 12px; opacity: 0.55; }
+.pms-auth-sub {
+  font-size: 12px;
+  opacity: 0.55;
+}
 
 // ── Application shell ──────────────────────────────────────────────────────
 //
@@ -167,7 +197,10 @@ a:hover { text-decoration: underline; }
 
 .pms-shell {
   display: flex;
+  // dvh rather than vh: on mobile the browser chrome would otherwise push the
+  // last row out of view. Falls back to vh where dvh is unsupported.
   block-size: 100vh;
+  block-size: 100dvh;
   overflow: hidden;
 }
 
@@ -186,15 +219,21 @@ a:hover { text-decoration: underline; }
 }
 
 // Collapsed: an icon rail. Everything stays reachable — only the labels go.
-.pms-shell.is-collapsed .pms-aside { inline-size: 60px; }
+.pms-shell.is-collapsed .pms-aside {
+  inline-size: 60px;
+}
 
 // The label spans and text blocks that disappear when collapsed. Hidden with
 // display:none rather than width:0 so they are removed from the accessibility
 // tree too, and each control keeps a title attribute as its accessible name.
-.pms-shell.is-collapsed .pms-collapsible { display: none; }
+.pms-shell.is-collapsed .pms-collapsible {
+  display: none;
+}
 
 .pms-shell.is-collapsed {
-  .pms-brand { justify-content: center; }
+  .pms-brand {
+    justify-content: center;
+  }
 
   .pms-nav a,
   .pms-aside-user,
@@ -206,7 +245,9 @@ a:hover { text-decoration: underline; }
 
 // Respect a reduced-motion preference: the width still changes, just instantly.
 @media (prefers-reduced-motion: reduce) {
-  .pms-aside { transition: none; }
+  .pms-aside {
+    transition: none;
+  }
 }
 
 .pms-nav-toggle {
@@ -226,17 +267,28 @@ a:hover { text-decoration: underline; }
   border-radius: 0;
   opacity: 0.6;
 
-  &:hover { opacity: 1; background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+  &:hover {
+    opacity: 1;
+    background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  }
 
   // The chevron is drawn pointing inline-start. `scaleX(-1)` under RTL keeps it
   // pointing the way the panel actually moves, and it flips again when
   // collapsed so it always indicates the action, not the state.
-  svg { transition: transform 180ms ease; }
+  svg {
+    transition: transform 180ms ease;
+  }
 }
 
-[dir="rtl"] .pms-nav-toggle svg { transform: scaleX(-1); }
-.pms-shell.is-collapsed .pms-nav-toggle svg { transform: scaleX(1); }
-[dir="rtl"] .pms-shell.is-collapsed .pms-nav-toggle svg { transform: scaleX(1); }
+[dir='rtl'] .pms-nav-toggle svg {
+  transform: scaleX(-1);
+}
+.pms-shell.is-collapsed .pms-nav-toggle svg {
+  transform: scaleX(1);
+}
+[dir='rtl'] .pms-shell.is-collapsed .pms-nav-toggle svg {
+  transform: scaleX(1);
+}
 
 // Collapsed, the toggle centres itself over the rail.
 .pms-shell.is-collapsed .pms-nav-toggle {
@@ -245,9 +297,16 @@ a:hover { text-decoration: underline; }
   inset-block-start: calc(var(--space-4) + 40px);
 }
 
+// The only scrolling region. The shell is a fixed viewport height and the
+// aside scrolls independently, so the page as a whole never scrolls and the
+// header can stick to the top of this box.
 .pms-main {
   flex: 1;
+  min-inline-size: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  // Keeps the sticky header from jumping as content height changes.
+  scrollbar-gutter: stable;
 }
 
 .pms-brand {
@@ -294,7 +353,9 @@ a:hover { text-decoration: underline; }
     background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   }
 
-  svg { flex: none; }
+  svg {
+    flex: none;
+  }
 }
 
 .pms-aside-foot {
@@ -325,10 +386,15 @@ a:hover { text-decoration: underline; }
     background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   }
 
-  .pms-collapsible { display: flex; flex-direction: column; }
+  .pms-collapsible {
+    display: flex;
+    flex-direction: column;
+  }
 }
 
-.pms-aside-user-name { font-weight: 600; }
+.pms-aside-user-name {
+  font-weight: 600;
+}
 
 .pms-avatar {
   inline-size: 28px;
@@ -349,14 +415,28 @@ a:hover { text-decoration: underline; }
 
 // ── View header ────────────────────────────────────────────────────────────
 
+// The header stays put while the view scrolls beneath it. `.pms-main` is the
+// scroll container, so sticking to its block-start keeps the title, the search
+// and the primary action reachable from anywhere in a long list.
 .pms-view-head {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 5;
+  // Opaque: rows scrolling underneath must not show through.
+  background: var(--color-surface);
+  // Cancels the page's inline padding so the divider spans the full width.
+  margin-inline: calc(-1 * var(--space-6));
+  padding-inline: var(--space-6);
   display: flex;
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-6);
   border-block-end: 1px solid var(--color-divider);
 
-  h1 { margin: 0; font-size: 25px; }
+  h1 {
+    margin: 0;
+    font-size: 25px;
+  }
 }
 
 .pms-crumb {
@@ -406,38 +486,9 @@ a:hover { text-decoration: underline; }
 
   // Sections supply their own card; the page wrapper's padding would double up
   // with the layout's.
-  .pms-page { padding: 0; max-inline-size: none; }
-}
-
-// ── Segmented control ──────────────────────────────────────────────────────
-// Vendored from the design source, which uses it for the property-type filter.
-// Its own rule sets `border-left`; converted to `border-inline-start` here so
-// mirroring is structural rather than patched per direction (Constitution II).
-
-.seg {
-  display: inline-flex;
-  overflow: hidden;
-  border: 1px solid var(--color-divider);
-  border-radius: var(--radius-md);
-}
-
-.seg-opt {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  border-inline-start: 1px solid var(--color-divider);
-
-  &:first-child {
-    border-inline-start: none;
-  }
-
-  // The design marks the active option with the accent pair.
-  &:has(input:checked) {
-    background: var(--color-accent-100);
-    color: var(--color-accent-800);
+  .pms-page {
+    padding: 0;
+    max-inline-size: none;
   }
 }
 
@@ -451,7 +502,10 @@ a:hover { text-decoration: underline; }
   gap: var(--space-4);
   margin-block-end: var(--space-4);
 
-  h2 { margin: 0; font-size: 20px; }
+  h2 {
+    margin: 0;
+    font-size: 20px;
+  }
 }
 
 .pms-section-count {
@@ -493,10 +547,14 @@ a:hover { text-decoration: underline; }
   padding: 0;
   overflow: hidden;
 
-  .pms-filters { padding: var(--space-4) var(--space-4) 0; }
+  .pms-filters {
+    padding: var(--space-4) var(--space-4) 0;
+  }
   .pms-empty,
   .pms-error-banner,
-  .pms-paging { padding-inline: var(--space-4); }
+  .pms-paging {
+    padding-inline: var(--space-4);
+  }
 }
 
 // The design's content band below the view header.
@@ -528,4 +586,61 @@ a:hover { text-decoration: underline; }
 
 .pms-clear-inline {
   margin-inline-start: var(--space-3);
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+//
+// Five features share this dialog shell: archive/restore confirm, attachment
+// remove/promote/viewer, custom-field remove, and lookup remove. The backdrop
+// covers the viewport with a dim wash; the panel sits centred, scrolls when its
+// body outgrows the viewport, and adapts via .pms-modal-wide for the inline
+// document viewer. Escape closes through the [pmsCloseOnEscape] directive
+// attached to each backdrop — keyboard parity with the existing click-to-close
+// behaviour (Constitution II).
+
+.pms-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--color-text) 45%, transparent);
+  z-index: 1000;
+}
+
+.pms-modal {
+  inline-size: 100%;
+  max-inline-size: 480px;
+  max-block-size: calc(100vh - 2 * var(--space-4));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  box-shadow: var(--shadow-lg);
+  overflow-y: auto;
+}
+
+.pms-modal-wide {
+  max-inline-size: min(90vw, 1200px);
+  block-size: min(80vh, 900px);
+}
+
+.pms-modal h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.pms-modal p {
+  margin: 0;
+  color: color-mix(in srgb, var(--color-text) 80%, transparent);
+}
+
+.pms-modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-block-start: var(--space-3);
 }

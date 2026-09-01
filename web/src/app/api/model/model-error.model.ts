@@ -40,6 +40,10 @@ export namespace ModelError {
         VersionConflict: 'version_conflict',
         Archived: 'archived',
         PasswordChangeRequired: 'password_change_required',
+        TooLarge: 'too_large',
+        UnsupportedType: 'unsupported_type',
+        IntegrityFailed: 'integrity_failed',
+        KeyUnavailable: 'key_unavailable',
         InternalError: 'internal_error',
     } as const;
     export type CodeEnum = typeof CodeEnum[keyof typeof CodeEnum];

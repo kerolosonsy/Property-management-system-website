@@ -58,9 +58,16 @@ type Property struct {
 	ArchivedAt     *time.Time
 	ArchivedBy     *uuid.UUID
 	ArchivedByName *string
+	ArchiveNote    *string
 
-	PropertyTypeLabel string
-	AreaLabel         string
+	PropertyTypeLabel  string
+	AreaLabel          string
+	MatchedAttachments []MatchedAttachment
+}
+
+type MatchedAttachment struct {
+	ID          uuid.UUID
+	Description string
 }
 
 // Lookup is one row from property_type or area.
@@ -172,7 +179,7 @@ func (s *Store) ListProperties(ctx context.Context, tx pgx.Tx, f ListFilters) ([
 		       p.version, p.created_at, p.created_by, cu.username,
 		       p.updated_at, p.updated_by, uu.username,
 		       p.archived_at, p.archived_by, au.username,
-		       pt.label, a.label
+		       p.archive_note, pt.label, a.label
 		FROM property p
 		JOIN property_type pt ON pt.id = p.property_type_id
 		JOIN area          a  ON a.id  = p.area_id
@@ -194,7 +201,7 @@ func (s *Store) ListProperties(ctx context.Context, tx pgx.Tx, f ListFilters) ([
 			&p.Version, &p.CreatedAt, &p.CreatedBy, &p.CreatedByName,
 			&p.UpdatedAt, &p.UpdatedBy, &p.UpdatedByName,
 			&p.ArchivedAt, &p.ArchivedBy, &p.ArchivedByName,
-			&p.PropertyTypeLabel, &p.AreaLabel); err != nil {
+			&p.ArchiveNote, &p.PropertyTypeLabel, &p.AreaLabel); err != nil {
 			return nil, 0, err
 		}
 		out = append(out, p)
@@ -249,7 +256,7 @@ func (s *Store) FindByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Propert
 		       p.version, p.created_at, p.created_by, cu.username,
 		       p.updated_at, p.updated_by, uu.username,
 		       p.archived_at, p.archived_by, au.username,
-		       pt.label, a.label
+		       p.archive_note, pt.label, a.label
 		FROM property p
 		JOIN property_type pt ON pt.id = p.property_type_id
 		JOIN area          a  ON a.id  = p.area_id
@@ -262,7 +269,7 @@ func (s *Store) FindByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Propert
 		&p.Version, &p.CreatedAt, &p.CreatedBy, &p.CreatedByName,
 		&p.UpdatedAt, &p.UpdatedBy, &p.UpdatedByName,
 		&p.ArchivedAt, &p.ArchivedBy, &p.ArchivedByName,
-		&p.PropertyTypeLabel, &p.AreaLabel); err != nil {
+		&p.ArchiveNote, &p.PropertyTypeLabel, &p.AreaLabel); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
@@ -294,13 +301,13 @@ func (s *Store) UpdateProperty(
 		WHERE id = $1 AND version = $7 AND archived_at IS NULL
 		RETURNING id, code, name, property_type_id, area_id, version,
 		          created_at, updated_at, created_by, updated_by,
-		          archived_at, archived_by`,
+		          archived_at, archived_by, archive_note`,
 		id, name, nameNormalized, propertyTypeID, areaID, updatedBy, expectedVersion,
 	)
 	p := &Property{}
 	if err := row.Scan(&p.ID, &p.Code, &p.Name, &p.PropertyTypeID, &p.AreaID, &p.Version,
 		&p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-		&p.ArchivedAt, &p.ArchivedBy); err != nil {
+		&p.ArchivedAt, &p.ArchivedBy, &p.ArchiveNote); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// Distinguish archived from version conflict from missing.
 			if cur, qErr := s.FindByID(ctx, tx, id); qErr == nil && cur != nil && cur.ArchivedAt != nil {
@@ -334,13 +341,13 @@ func (s *Store) ChangeCode(
 		WHERE id = $1 AND version = $5 AND archived_at IS NULL
 		RETURNING code, id, name, property_type_id, area_id, version,
 		          created_at, updated_at, created_by, updated_by,
-		          archived_at, archived_by`,
+		          archived_at, archived_by, archive_note`,
 		id, newCode, newNormalized, updatedBy, expectedVersion,
 	)
 	p = &Property{}
 	if err = row.Scan(&oldCode, &p.ID, &p.Name, &p.PropertyTypeID, &p.AreaID, &p.Version,
 		&p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-		&p.ArchivedAt, &p.ArchivedBy); err != nil {
+		&p.ArchivedAt, &p.ArchivedBy, &p.ArchiveNote); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			if cur, qErr := s.FindByID(ctx, tx, id); qErr == nil && cur != nil && cur.ArchivedAt != nil {
 				err = ErrArchived
@@ -363,29 +370,32 @@ func (s *Store) ChangeCode(
 	return
 }
 
-// Archive sets the archived pair and increments version. Refuses an already
-// archived property with ErrArchived and a stale version with ErrVersionConflict.
+// Archive sets the archived pair, the optional note, and increments version.
+// Refuses an already archived property with ErrArchived and a stale version
+// with ErrVersionConflict. An empty note is stored as NULL.
 func (s *Store) Archive(
 	ctx context.Context, tx pgx.Tx,
 	id uuid.UUID, actorID uuid.UUID, expectedVersion int,
+	note *string,
 ) (*Property, error) {
 	row := tx.QueryRow(ctx, `
 		UPDATE property
 		SET archived_at = now(),
 		    archived_by = $2,
+		    archive_note = $3,
 		    version = version + 1,
 		    updated_at = now(),
 		    updated_by = $2
-		WHERE id = $1 AND version = $3 AND archived_at IS NULL
+		WHERE id = $1 AND version = $4 AND archived_at IS NULL
 		RETURNING id, code, name, property_type_id, area_id, version,
 		          created_at, updated_at, created_by, updated_by,
-		          archived_at, archived_by`,
-		id, actorID, expectedVersion,
+		          archived_at, archived_by, archive_note`,
+		id, actorID, note, expectedVersion,
 	)
 	p := &Property{}
 	if err := row.Scan(&p.ID, &p.Code, &p.Name, &p.PropertyTypeID, &p.AreaID, &p.Version,
 		&p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-		&p.ArchivedAt, &p.ArchivedBy); err != nil {
+		&p.ArchivedAt, &p.ArchivedBy, &p.ArchiveNote); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			if cur, qErr := s.FindByID(ctx, tx, id); qErr == nil && cur != nil && cur.ArchivedAt != nil {
 				return nil, ErrArchived
@@ -400,9 +410,9 @@ func (s *Store) Archive(
 	return p, nil
 }
 
-// Restore clears the archived pair and increments version. Refuses an
-// already-active property with ErrArchived and a stale version with
-// ErrVersionConflict.
+// Restore clears the archived pair and the archive note, and increments
+// version. Refuses an already-active property with ErrArchived and a stale
+// version with ErrVersionConflict.
 func (s *Store) Restore(
 	ctx context.Context, tx pgx.Tx,
 	id uuid.UUID, actorID uuid.UUID, expectedVersion int,
@@ -411,19 +421,20 @@ func (s *Store) Restore(
 		UPDATE property
 		SET archived_at = NULL,
 		    archived_by = NULL,
+		    archive_note = NULL,
 		    version = version + 1,
 		    updated_at = now(),
 		    updated_by = $2
 		WHERE id = $1 AND version = $3 AND archived_at IS NOT NULL
 		RETURNING id, code, name, property_type_id, area_id, version,
 		          created_at, updated_at, created_by, updated_by,
-		          archived_at, archived_by`,
+		          archived_at, archived_by, archive_note`,
 		id, actorID, expectedVersion,
 	)
 	p := &Property{}
 	if err := row.Scan(&p.ID, &p.Code, &p.Name, &p.PropertyTypeID, &p.AreaID, &p.Version,
 		&p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-		&p.ArchivedAt, &p.ArchivedBy); err != nil {
+		&p.ArchivedAt, &p.ArchivedBy, &p.ArchiveNote); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			if cur, qErr := s.FindByID(ctx, tx, id); qErr == nil && cur != nil && cur.ArchivedAt == nil {
 				return nil, ErrArchived

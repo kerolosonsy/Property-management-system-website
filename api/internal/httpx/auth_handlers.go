@@ -8,19 +8,13 @@ import (
 
 	"pms/internal/audit"
 	"pms/internal/auth"
+	"pms/internal/gen"
 	"pms/internal/identity"
 )
 
-// signInBody mirrors the OpenAPI request body. Using a private struct here
-// keeps the handler independent of any future generated body type.
-type signInBody struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 func (s *Server) handleSignIn() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body signInBody
+		var body gen.SignInJSONBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -93,7 +87,7 @@ func (s *Server) handleSignIn() http.Handler {
 		if err := auth.VerifyPassword(body.Password, acct.PasswordHash); err != nil {
 			_ = s.delay.RecordFailure(r.Context(), tx, canonical)
 			if err := audit.Write(r.Context(), tx, audit.Entry{
-				Action:        audit.SignInFailed,
+				Action:         audit.SignInFailed,
 				ActorAccountID: &acct.ID,
 				ActorUsername:  acct.Username,
 				ActorRole:      rolePtr(acct.Role),
@@ -113,7 +107,7 @@ func (s *Server) handleSignIn() http.Handler {
 
 		if !acct.IsActive {
 			if err := audit.Write(r.Context(), tx, audit.Entry{
-				Action:        audit.SignInFailed,
+				Action:         audit.SignInFailed,
 				ActorAccountID: &acct.ID,
 				ActorUsername:  acct.Username,
 				ActorRole:      rolePtr(acct.Role),
@@ -142,7 +136,7 @@ func (s *Server) handleSignIn() http.Handler {
 		actorID := acct.ID
 		actorRole := acct.Role
 		if err := audit.Write(r.Context(), tx, audit.Entry{
-			Action:        audit.SignInSucceeded,
+			Action:         audit.SignInSucceeded,
 			ActorAccountID: &actorID,
 			ActorUsername:  acct.Username,
 			ActorRole:      &actorRole,
@@ -195,11 +189,11 @@ func validateUsername(raw string) error {
 
 func currentUserResponse(a *identity.Account) map[string]any {
 	out := map[string]any{
-		"id":                  a.ID.String(),
-		"username":            a.Username,
-		"displayName":         a.DisplayName,
-		"role":                a.Role,
-		"mustChangePassword":  a.MustChangePassword,
+		"id":                 a.ID.String(),
+		"username":           a.Username,
+		"displayName":        a.DisplayName,
+		"role":               a.Role,
+		"mustChangePassword": a.MustChangePassword,
 	}
 	return out
 }

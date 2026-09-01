@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"pms/internal/gen"
 	"pms/internal/properties"
-
-	"github.com/google/uuid"
 )
 
 func (s *Server) handleSearchProperties() http.Handler {
@@ -22,7 +21,7 @@ func (s *Server) handleSearchProperties() http.Handler {
 		}
 		_ = c
 
-		var body genAdvancedSearch
+		var body gen.AdvancedSearch
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -30,47 +29,40 @@ func (s *Server) handleSearchProperties() http.Handler {
 
 		in := properties.SearchInputs{
 			Q:               derefString(body.Q),
+			DocumentText:    derefString(body.DocumentText),
+			AttachmentName:  derefString(body.AttachmentName),
+			HasAttachments:  derefHasAttachments(body.HasAttachments),
 			IncludeArchived: derefBool(body.IncludeArchived),
 			Page:            derefInt(body.Page, 1),
-			PageSize:        derefIntSearch(body.PageSize, 25),
+			PageSize:        derefPageSize(body.PageSize, 25),
 		}
-		if body.PropertyTypeID != nil {
-			id := *body.PropertyTypeID
+		if body.PropertyTypeId != nil {
+			id := *body.PropertyTypeId
 			in.PropertyTypeID = &id
 		}
-		if body.AreaID != nil {
-			id := *body.AreaID
+		if body.AreaId != nil {
+			id := *body.AreaId
 			in.AreaID = &id
 		}
-		for _, f := range body.CustomFilters {
-			fid, err := uuid.Parse(f.FieldID)
-			if err != nil {
-				WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgSearchUnknownField))
-				return
-			}
+		// The generated types already carry parsed UUIDs, so nothing here
+		// re-parses strings. Whether a field id is known, is sensitive, or
+		// suits its operator is decided in the store, against the definitions
+		// (research.md D-006) — never here.
+		for _, f := range derefFilters(body.CustomFilters) {
 			sf := properties.SearchFilter{
-				FieldID:  fid,
+				FieldID:  f.FieldId,
 				Operator: properties.Operator(f.Operator),
 			}
 			if f.Text != nil {
 				t := *f.Text
 				sf.Text = &t
 			}
-			if f.ChoiceID != nil {
-				id, err := uuid.Parse(*f.ChoiceID)
-				if err != nil {
-					WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgSearchInvalidValue))
-					return
-				}
+			if f.ChoiceId != nil {
+				id := *f.ChoiceId
 				sf.ChoiceID = &id
 			}
-			for _, raw := range f.ChoiceIDs {
-				id, err := uuid.Parse(raw)
-				if err != nil {
-					WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgSearchInvalidValue))
-					return
-				}
-				sf.ChoiceIDs = append(sf.ChoiceIDs, id)
+			if f.ChoiceIds != nil {
+				sf.ChoiceIDs = append(sf.ChoiceIDs, *f.ChoiceIds...)
 			}
 			in.CustomFilters = append(in.CustomFilters, sf)
 		}
@@ -121,24 +113,23 @@ func (s *Server) handleSearchProperties() http.Handler {
 	})
 }
 
-// genAdvancedSearch mirrors the shape the generated client sends. Keeping the
-// field names aligned with the contract (Constitution III).
-type genAdvancedSearch struct {
-	Q               *string               `json:"q"`
-	PropertyTypeID  *uuid.UUID            `json:"propertyTypeId"`
-	AreaID          *uuid.UUID            `json:"areaId"`
-	IncludeArchived *bool                 `json:"includeArchived"`
-	Page            *int                  `json:"page"`
-	PageSize        *int                  `json:"pageSize"`
-	CustomFilters   []genCustomFilterBody `json:"customFilters"`
+// The request body is the generated contract type. Mirroring it by hand here
+// would duplicate spec types, which Constitution III prohibits.
+
+// derefFilters unwraps the generated optional slice.
+func derefFilters(p *[]gen.CustomFieldFilter) []gen.CustomFieldFilter {
+	if p == nil {
+		return nil
+	}
+	return *p
 }
 
-type genCustomFilterBody struct {
-	FieldID   string   `json:"fieldId"`
-	Operator  string   `json:"operator"`
-	Text      *string  `json:"text"`
-	ChoiceID  *string  `json:"choiceId"`
-	ChoiceIDs []string `json:"choiceIds"`
+// derefPageSize unwraps the generated page-size enum.
+func derefPageSize(p *gen.AdvancedSearchPageSize, def int) int {
+	if p == nil {
+		return def
+	}
+	return int(*p)
 }
 
 func derefString(p *string) string {
@@ -170,4 +161,13 @@ func derefIntSearch(p *int, def int) int {
 	default:
 		return def
 	}
+}
+
+// derefHasAttachments unwraps the generated optional enum, defaulting to the
+// unconstrained case.
+func derefHasAttachments(p *gen.AdvancedSearchHasAttachments) string {
+	if p == nil {
+		return "any"
+	}
+	return string(*p)
 }

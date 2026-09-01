@@ -1,18 +1,20 @@
 package httpx
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
 	"pms/internal/audit"
+	"pms/internal/gen"
 	"pms/internal/identity"
 	"pms/internal/properties"
-)
 
-type lookupWriteBody struct {
-	Label string `json:"label"`
-}
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+)
 
 func lookupToJSON(l properties.Lookup) map[string]any {
 	return map[string]any{
@@ -129,7 +131,7 @@ func (s *Server) handleCreateLookup(kind properties.LookupKind, action audit.Act
 		if !requireAdmin(w, r, c) {
 			return
 		}
-		var body lookupWriteBody
+		var body gen.LookupWrite
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -172,7 +174,7 @@ func (s *Server) handleCreateLookup(kind properties.LookupKind, action audit.Act
 			EntityType:     entityType,
 			EntityID:       created.ID.String(),
 			SourceIP:       ClientIP(r),
-			Detail:         map[string]any{"label": label, "kind": entityName},
+			After:          map[string]any{"label": label, "kind": entityName},
 		}); err != nil {
 			refuseInternal(w, err)
 			return
@@ -214,7 +216,7 @@ func (s *Server) handleRenameLookup(kind properties.LookupKind, action audit.Act
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest))
 			return
 		}
-		var body lookupWriteBody
+		var body gen.LookupWrite
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -232,6 +234,17 @@ func (s *Server) handleRenameLookup(kind properties.LookupKind, action audit.Act
 			return
 		}
 		defer tx.Rollback(r.Context())
+
+		previousLabel, err := lookupLabelByID(r.Context(), tx, kind, id)
+		if err != nil {
+			refuseInternal(w, err)
+			return
+		}
+		if previousLabel == "" {
+			_ = tx.Rollback(r.Context())
+			WriteError(w, NewAPIError(http.StatusNotFound, CodeNotFound, MsgLookupNotFound))
+			return
+		}
 
 		updated, err := s.properties.RenameLookup(r.Context(), tx, kind, id, label, identity.Canonical(label))
 		if err != nil {
@@ -262,7 +275,8 @@ func (s *Server) handleRenameLookup(kind properties.LookupKind, action audit.Act
 			EntityType:     entityType,
 			EntityID:       updated.ID.String(),
 			SourceIP:       ClientIP(r),
-			Detail:         map[string]any{"label": label},
+			Before:         map[string]any{"label": previousLabel},
+			After:          map[string]any{"label": label},
 		}); err != nil {
 			refuseInternal(w, err)
 			return
@@ -326,6 +340,11 @@ func (s *Server) handleDeleteLookup(kind properties.LookupKind, action audit.Act
 			WriteError(w, NewAPIError(http.StatusConflict, CodeInUse, formatCountMsg(msg, count)))
 			return
 		}
+		previousLabel, err := lookupLabelByID(r.Context(), tx, kind, id)
+		if err != nil {
+			refuseInternal(w, err)
+			return
+		}
 		if err := s.properties.DeleteLookup(r.Context(), tx, kind, id); err != nil {
 			if err == properties.ErrInUse {
 				WriteError(w, NewAPIError(http.StatusConflict, CodeInUse, MsgInUse))
@@ -348,6 +367,7 @@ func (s *Server) handleDeleteLookup(kind properties.LookupKind, action audit.Act
 			EntityType:     entityType,
 			EntityID:       id.String(),
 			SourceIP:       ClientIP(r),
+			Before:         map[string]any{"label": previousLabel},
 		}); err != nil {
 			refuseInternal(w, err)
 			return
@@ -381,4 +401,29 @@ func formatCountMsg(template string, n int) string {
 		}
 	}
 	return out
+}
+
+// lookupLabelByID returns the current label for one lookup row, or "" if no
+// such row exists. Used by the rename handler to capture the before label so
+// the audit row carries a complete before/after (Constitution VIII as
+// amended in v1.4.0).
+func lookupLabelByID(ctx context.Context, tx pgx.Tx, kind properties.LookupKind, id uuid.UUID) (string, error) {
+	table := ""
+	switch kind {
+	case properties.LookupPropertyType:
+		table = "property_type"
+	case properties.LookupArea:
+		table = "area"
+	default:
+		return "", nil
+	}
+	var label string
+	row := tx.QueryRow(ctx, `SELECT label FROM `+table+` WHERE id = $1`, id)
+	if err := row.Scan(&label); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+	return label, nil
 }

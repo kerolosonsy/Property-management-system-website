@@ -29,13 +29,15 @@ type CustomFieldChoice struct {
 	Label string
 }
 
-// CustomField is one row from custom_field, with its choices in display order.
+// CustomField is one row from custom_field, with its choices in display order
+// and the count of properties currently holding a value for it (FR-027s5).
 type CustomField struct {
 	ID          uuid.UUID
 	Label       string
 	FieldType   CustomFieldType
 	IsSensitive bool
 	Choices     []CustomFieldChoice
+	ValuesCount int
 }
 
 // ErrDuplicateLabel — a field with the same canonical label already exists.
@@ -54,7 +56,10 @@ var ErrChoicesRequired = errors.New("dropdown and multiselect fields require cho
 // (FR-027g + data-model 0013).
 var ErrInUseValuesExist = errors.New("custom field has stored values")
 
-// ListCustomFields returns every custom field, with its choices.
+// ListCustomFields returns every custom field, with its choices and the
+// number of properties currently holding a value for it. The count is what
+// the field-definition screen uses to disable the sensitivity checkbox when
+// sensitivity is fixed (FR-027s5).
 func (s *Store) ListCustomFields(ctx context.Context, tx pgx.Tx) ([]CustomField, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT id, label, field_type, is_sensitive
@@ -100,8 +105,35 @@ func (s *Store) ListCustomFields(ctx context.Context, tx pgx.Tx) ([]CustomField,
 	if err := choiceRows.Err(); err != nil {
 		return nil, err
 	}
+
+	// Count properties currently holding a value per field, so the UI can
+	// disable the sensitivity checkbox on a field whose values already exist
+	// (FR-027s5). One query covers both single-value and multi-value rows.
+	countRows, err := tx.Query(ctx, `
+		SELECT cf.id,
+		       (SELECT count(DISTINCT property_id) FROM property_field_value       WHERE custom_field_id = cf.id)
+		     + (SELECT count(DISTINCT property_id) FROM property_field_multi_value WHERE custom_field_id = cf.id)
+		FROM custom_field cf`)
+	if err != nil {
+		return nil, err
+	}
+	defer countRows.Close()
+	counts := map[uuid.UUID]int{}
+	for countRows.Next() {
+		var id uuid.UUID
+		var n int
+		if err := countRows.Scan(&id, &n); err != nil {
+			return nil, err
+		}
+		counts[id] = n
+	}
+	if err := countRows.Err(); err != nil {
+		return nil, err
+	}
+
 	for i := range out {
 		out[i].Choices = byField[out[i].ID]
+		out[i].ValuesCount = counts[out[i].ID]
 	}
 	return out, nil
 }

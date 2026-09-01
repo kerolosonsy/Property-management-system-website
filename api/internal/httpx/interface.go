@@ -5,6 +5,7 @@ import (
 
 	"pms/internal/gen"
 
+	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -18,6 +19,10 @@ var _ gen.ServerInterface = (*Server)(nil)
 
 func (s *Server) GetHealth(w http.ResponseWriter, r *http.Request) {
 	s.handleHealth().ServeHTTP(w, r)
+}
+
+func (s *Server) GetDashboard(w http.ResponseWriter, r *http.Request) {
+	s.handleDashboard().ServeHTTP(w, r)
 }
 
 func (s *Server) SignIn(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +63,9 @@ func (s *Server) ResetUserPassword(w http.ResponseWriter, r *http.Request, userI
 
 func (s *Server) ListAuditRecords(w http.ResponseWriter, r *http.Request, params gen.ListAuditRecordsParams) {
 	s.handleListAuditRecords().ServeHTTP(w, r)
+}
+func (s *Server) UndoAuditRecord(w http.ResponseWriter, r *http.Request, recordId int64) {
+	s.handleUndoAuditRecord(recordId).ServeHTTP(w, r)
 }
 
 // Properties
@@ -126,4 +134,45 @@ func (s *Server) DeleteCustomField(w http.ResponseWriter, r *http.Request, field
 // Search
 func (s *Server) SearchProperties(w http.ResponseWriter, r *http.Request) {
 	s.handleSearchProperties().ServeHTTP(w, r)
+}
+
+// Attachments — feature 003-property-attachments-ocr. Each method dispatches
+// to the concrete handler that lives in attachment_handlers.go or
+// attachment_content_handler.go; the wiring exists here so that *Server
+// satisfies gen.ServerInterface and the build passes (Constitution III:
+// handlers must exist for every generated route).
+func (s *Server) ListAttachments(w http.ResponseWriter, r *http.Request, propertyId gen.PropertyId) {
+	s.handleListAttachments(uuid.UUID(propertyId)).ServeHTTP(w, r)
+}
+func (s *Server) UploadAttachment(w http.ResponseWriter, r *http.Request, propertyId gen.PropertyId) {
+	s.handleUploadAttachment(uuid.UUID(propertyId)).ServeHTTP(w, r)
+}
+func (s *Server) GetAttachment(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleGetAttachment(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) UpdateAttachment(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleUpdateAttachment(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) DeleteAttachment(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleDeleteAttachment(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) GetAttachmentContent(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId, params gen.GetAttachmentContentParams) {
+	disp := "attachment"
+	if params.Disposition != nil {
+		disp = string(*params.Disposition)
+	}
+	local := genGetAttachmentContentParams{Disposition: disp}
+	s.handleGetAttachmentContent(uuid.UUID(attachmentId), local).ServeHTTP(w, r)
+}
+func (s *Server) GetAttachmentText(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleGetAttachmentText(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) CorrectAttachmentText(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleCorrectAttachmentText(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) ReextractAttachmentText(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleReextractAttachmentText(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) SearchDocuments(w http.ResponseWriter, r *http.Request) {
+	s.handleSearchDocuments().ServeHTTP(w, r)
 }

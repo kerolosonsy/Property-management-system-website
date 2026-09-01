@@ -12,11 +12,12 @@ import { CustomFieldType } from '../../../api/model/custom-field-type.model';
 import { ARABIC_MESSAGES } from '../../../shared/messages';
 import { ApiError } from '../../../core/api-error';
 import { WesternDigitsDirective } from '../../../shared/western-digits.directive';
+import { CloseOnEscapeDirective } from '../../../shared/close-on-escape.directive';
 
 @Component({
   selector: 'app-custom-fields',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, WesternDigitsDirective],
+  imports: [CommonModule, ReactiveFormsModule, WesternDigitsDirective, CloseOnEscapeDirective],
   template: `
     <section class="pms-page">
       <header class="pms-view-head">
@@ -54,11 +55,14 @@ import { WesternDigitsDirective } from '../../../shared/western-digits.directive
             @if (fieldError('fieldType'); as m) { <div class="pms-field-error">{{ m }}</div> }
           </div>
 
-          @if (form.controls.fieldType.value === 'text') {
-            <div class="field pms-field pms-field-checkbox">
-              <input id="isSensitive" type="checkbox" formControlName="isSensitive" />
-              <label for="isSensitive">{{ msgs.customFieldSensitive }}</label>
-            </div>
+          <div class="field pms-field pms-field-checkbox">
+            <input id="isSensitive" type="checkbox" formControlName="isSensitive"
+                   [attr.aria-describedby]="sensitiveHintId()"
+                   [disabled]="sensitiveDisabled()" />
+            <label for="isSensitive">{{ msgs.customFieldSensitive }}</label>
+          </div>
+          @if (sensitiveHint(); as h) {
+            <div [id]="sensitiveHintId()" class="pms-field-hint">{{ h }}</div>
           }
 
           @if (form.controls.fieldType.value === 'dropdown' || form.controls.fieldType.value === 'multiselect') {
@@ -129,7 +133,7 @@ import { WesternDigitsDirective } from '../../../shared/western-digits.directive
     </section>
 
     @if (confirmRemove(); as f) {
-      <div class="pms-modal-backdrop" (click)="cancelRemove()">
+      <div class="pms-modal-backdrop" (click)="cancelRemove()" [pmsCloseOnEscape]="cancelRemove">
         <div class="pms-modal" (click)="$event.stopPropagation()">
           <h2>{{ msgs.customFieldRemove }}</h2>
           <p>{{ f.label }}</p>
@@ -170,8 +174,41 @@ export class CustomFieldsComponent implements OnInit {
     return this.fieldErrors()[name];
   }
 
+  // Sensitivity is text-only and, once any value exists, fixed (FR-027s1, FR-027s5).
+  // The checkbox is always rendered so the operator can see and reason about it;
+  // when the rules disallow a change it is disabled with an Arabic hint that says
+  // why. The hint id is fed into aria-describedby for screen readers.
+  protected sensitiveHint(): string | null {
+    const type = this.form.controls.fieldType.value;
+    const editing = this.editing();
+    if (type !== 'text') {
+      return this.msgs.customFieldSensitiveTextOnly;
+    }
+    if (editing && (editing.valuesCount ?? 0) > 0) {
+      return this.msgs.customFieldSensitiveFixed;
+    }
+    return null;
+  }
+
+  protected sensitiveHintId(): string {
+    return 'pms-isSensitive-hint';
+  }
+
+  protected sensitiveDisabled(): boolean {
+    const type = this.form.controls.fieldType.value;
+    if (type !== 'text') {
+      return true;
+    }
+    const editing = this.editing();
+    if (editing && (editing.valuesCount ?? 0) > 0) {
+      return true;
+    }
+    return false;
+  }
+
   ngOnInit(): void {
     this.refresh();
+    this.subscribeSensitiveReset();
   }
 
   protected typeLabel(t: CustomFieldType): string {
@@ -207,6 +244,20 @@ export class CustomFieldsComponent implements OnInit {
       isSensitive: f.isSensitive,
     });
     this.choicesControls.set(f.choices.map((c) => new FormControl(c.label, { nonNullable: true })));
+    this.subscribeSensitiveReset();
+  }
+
+  private sensitiveResetSub: { unsubscribe(): void } | null = null;
+  private subscribeSensitiveReset(): void {
+    this.sensitiveResetSub?.unsubscribe();
+    this.sensitiveResetSub = this.form.controls.fieldType.valueChanges.subscribe((t) => {
+      // Only text fields may be sensitive. If the operator changed the type
+      // away from text, clear isSensitive so the stored value matches what
+      // the server will accept (the server refuses sensitive on non-text).
+      if (t !== 'text') {
+        this.form.controls.isSensitive.setValue(false, { emitEvent: false });
+      }
+    });
   }
 
   protected cancelEdit(): void {

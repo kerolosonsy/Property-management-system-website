@@ -31,12 +31,26 @@ func propertyResponse(p *properties.Property) map[string]any {
 		"isArchived":   p.ArchivedAt != nil,
 		"archivedAt":   nil,
 		"archivedBy":   nil,
+		"archiveNote":  nil,
 	}
 	if p.ArchivedAt != nil {
 		out["archivedAt"] = p.ArchivedAt.UTC().Format("2006-01-02T15:04:05.000Z07:00")
 	}
 	if p.ArchivedByName != nil {
 		out["archivedBy"] = *p.ArchivedByName
+	}
+	if p.ArchiveNote != nil {
+		out["archiveNote"] = *p.ArchiveNote
+	}
+	if len(p.MatchedAttachments) > 0 {
+		matches := make([]map[string]any, 0, len(p.MatchedAttachments))
+		for _, match := range p.MatchedAttachments {
+			matches = append(matches, map[string]any{
+				"id":          match.ID.String(),
+				"description": match.Description,
+			})
+		}
+		out["matchedAttachments"] = matches
 	}
 	return out
 }
