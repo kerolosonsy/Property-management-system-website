@@ -1,13 +1,117 @@
 # Deployment guide
 
-This guide describes a single-host Linux installation of the property management
-system. Replace `pms.example.com` and the example paths with values for the target
-host. Run application processes as an unprivileged `pms` account.
+An Arabic step-by-step version of the one-command procedure is in
+[`docs/SETUP-AR.md`](SETUP-AR.md) — دليل التشغيل بالعربية.
 
-This repository does not provide a production application container image, CI,
-or an automated test gate. Go tests exist, but nothing enforces that they run
-before deployment. The binding verification procedures are the manual steps in
-each feature's `specs/*/quickstart.md`.
+## One-command local and LAN server
+
+From a repository checkout, run the command for this machine:
+
+```bash
+# macOS / Linux
+bash scripts/setup.sh
+```
+
+```powershell
+# Windows (Windows PowerShell 5.1)
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup.ps1
+```
+
+These commands auto-select the database. To choose explicitly, use:
+
+```bash
+# macOS / Linux
+bash scripts/setup.sh --db=native
+bash scripts/setup.sh --db=docker
+```
+
+```powershell
+# Windows (Windows PowerShell 5.1)
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup.ps1 --db=native
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup.ps1 --db=docker
+```
+
+When `--db` is omitted, setup chooses native PostgreSQL only when a locally
+installed server is already running and reachable; otherwise it chooses Docker.
+It prints the selected mode and reason during `Preflight`. `--db=docker` keeps
+the previous Docker Compose path. `--db=native` never checks for or starts
+Docker.
+
+On macOS or Linux, `make setup` remains the equivalent no-argument command and
+therefore uses auto-detection. Both scripts also accept `--no-start` (configure
+and build without starting the API) and `--skip-deps` (verify dependencies but
+leave their installation to the operator).
+
+### Native PostgreSQL mode
+
+Native mode requires PostgreSQL major version 17. On macOS setup installs
+`postgresql@17` with Homebrew and manages it with `brew services`. On supported
+Linux package managers it installs the version-17 server package, initializes
+the distribution's cluster when necessary, and enables and starts its systemd
+or OpenRC service. If another server major is installed or the reachable server
+is not version 17, setup stops instead of attempting an upgrade or downgrade.
+
+The native server is configured to listen only on `127.0.0.1:5432`. Setup uses
+the current user's Homebrew socket access on macOS and `sudo -u postgres psql`
+on Linux to create the `pms` database, make `pms_owner` its owner, and keep
+`pms_owner` as a login superuser. Docker is not a native-mode prerequisite.
+
+On Windows, an unattended official PostgreSQL install cannot safely supply and
+retain the required `postgres` bootstrap password without putting a secret in a
+process argument. If PostgreSQL 17 is absent, setup stops with the exact
+operator-run `winget` or Chocolatey installation command. After installation,
+run setup from a PowerShell session whose `PGPASSWORD` was populated by
+`Get-Credential`, as instructed by the error message. Setup then enables and
+starts the PostgreSQL 17 Windows service, restricts its listener, and creates the
+same roles and database. This Windows-native path has not been exercised here.
+
+### Generated database passwords
+
+For an empty or absent `PMS_DATABASE_OWNER_URL` or `PMS_DATABASE_APP_URL`, setup
+generates a separate 48-character hexadecimal password and writes it only as the
+password component of that DSN in `.env`. It never prints either password. After
+migrations, it applies the generated credentials to `pms_owner` and `pms_app`
+through SQL on standard input, so the secret is not a command-line argument.
+
+An existing DSN is changed only when its password is exactly
+`dev_only_owner_pw` or `dev_only_app_pw`. Setup then applies a newly generated
+password, rewrites only that DSN, and prints one rotation notice. Any other
+password is treated as operator-managed and is left unchanged without a repeated
+warning. A second successful setup run therefore does not rotate either role.
+All other non-empty `.env` values retain the existing never-overwrite behavior;
+in particular, setup never replaces an existing `PMS_KEK`.
+
+The installer detects the host, installs missing supported packages, fills empty
+`.env` values while preserving non-empty operator values, rotates only the two
+exact legacy database defaults described above, creates or reuses a self-signed
+certificate, starts PostgreSQL, applies migrations, creates or resets only the
+`admin` account, builds both applications, and starts the Go server. The new
+certificate covers localhost, the hostname, and the primary LAN IPv4 address.
+The Go server serves the Angular bundle and API over the same HTTPS listener.
+The generated administrator password is stored only in `.env`; the installer
+never prints it. Preserve and back up `PMS_KEK` before doing any maintenance
+involving `.env`. If a distribution package cannot satisfy Go 1.27 or Node 22,
+setup stops and names the upstream installation step rather than accepting the
+old version.
+
+The self-signed certificate is appropriate for a trusted local network after
+each client explicitly trusts it. It is not a public production certificate.
+Use `--no-start` when a service manager will own the process.
+
+Verification status for this revision: the offline build and Bash syntax gates
+were exercised on macOS with Apple silicon. Neither installer was executed. The
+Linux package-manager paths, Windows PowerShell 5.1 entry point, Windows service
+management, and Windows-native PostgreSQL bootstrap are written but unverified
+on their target operating systems.
+
+## Manual production deployment
+
+The remaining guide is the fallback procedure and the recommended shape for a
+real single-host Linux installation. Replace `pms.example.com` and the example
+paths with values for the target host. Run application processes as an
+unprivileged `pms` account. The repository still does not provide a production
+application container image or CI gate. The binding verification procedures are
+the manual steps in each feature's `specs/*/quickstart.md`.
 
 ## 1. Dependencies
 
@@ -63,12 +167,13 @@ readable only by the service account.
 Generate independent database passwords and the encryption master key:
 
 ```bash
-openssl rand -base64 36
-openssl rand -base64 36
+openssl rand -hex 24
+openssl rand -hex 24
 openssl rand -base64 32
 ```
 
-The third output is `PMS_KEK`. It must decode to exactly 32 bytes.
+The first two URL-safe outputs are the database-role passwords. The third output
+is `PMS_KEK`; it must decode to exactly 32 bytes.
 
 **`PMS_KEK` is the master encryption key. If it is lost, every encrypted
 attachment and every sensitive custom-field value is permanently unreadable.**
@@ -108,11 +213,13 @@ The complete environment surface is:
 | `PMS_TLS_CERT_PATH` | API | PEM certificate chain for the API TLS listener. |
 | `PMS_TLS_KEY_PATH` | API | PEM private key matching the API certificate. |
 | `PMS_LISTEN_ADDR` | optional | TLS listen address; defaults to `:8443`. Use `127.0.0.1:8443` behind a local proxy. |
+| `PMS_WEB_DIST` | optional | Absolute Angular bundle directory served by the Go process. Leave empty for the existing API-only/nginx deployment. |
 | `PMS_ATTACHMENT_STORE` | API | Absolute, writable directory outside the repository for encrypted attachment blobs. |
 | `PMS_ATTACHMENT_MAX_BYTES` | optional | Maximum upload size in bytes; defaults to 52,428,800 (50 MiB). |
 | `PMS_EXTRACT_TEXT_MAX_BYTES` | optional | Maximum stored extracted text in bytes; defaults to 262,144 (256 KiB). |
 | `PMS_KEK` | API | Base64 encoding of exactly 32 random bytes; the irreplaceable encryption master key. |
 | `SEED_USERNAME` | optional Make variable | Username used by `make seed-admin`; defaults to `admin`. |
+| `PMS_ADMIN_PASSWORD` | setup scripts only | Administrator bootstrap/reset input kept in `.env`; never pass its value on a command line. |
 | `DEV_ADMIN_PASSWORD` | development only | Input for `make reset-admin-dev`. Do not set or use it on a deployed host. |
 
 Connection-string passwords must be URL-encoded. Do not paste an unencoded
@@ -363,5 +470,6 @@ sudo journalctl -u pms-api.service -n 100 --no-pager
 - **The audit role check shows broader grants:** stop the API, revoke the excess
   privileges, and investigate before restarting. `pms_app` must have only
   `SELECT, INSERT` on `audit_log`.
-- **The web application returns 404 after browser refresh:** confirm nginx uses
-  `try_files $uri $uri/ /index.html` for Angular routes.
+- **The web application returns 404 after browser refresh:** for one-command
+  setup, confirm `PMS_WEB_DIST` names the built directory containing
+  `index.html`; for nginx, confirm it uses `try_files $uri $uri/ /index.html`.

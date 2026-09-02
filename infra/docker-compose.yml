@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: pms_owner
-      POSTGRES_PASSWORD: dev_only_owner_pw
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD-dev_only_owner_pw}
       POSTGRES_DB: pms
     ports:
       - "127.0.0.1:5432:5432"

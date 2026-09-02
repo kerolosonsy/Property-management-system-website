@@ -46,12 +46,13 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: admintool seed-admin [--username NAME] | reset-admin [--username NAME] | seed-demo")
+	fmt.Fprintln(os.Stderr, "usage: admintool seed-admin [--username NAME] [--password-env NAME] | reset-admin [--username NAME] | seed-demo")
 }
 
 func seedAdmin(args []string) {
 	fs := flag.NewFlagSet("seed-admin", flag.ExitOnError)
 	username := fs.String("username", "admin", "username for the initial administrator")
+	passwordEnv := fs.String("password-env", "", "read the password from this environment variable instead of prompting")
 	if err := fs.Parse(args); err != nil {
 		os.Exit(1)
 	}
@@ -66,21 +67,32 @@ func seedAdmin(args []string) {
 		fatal(err)
 	}
 
-	pw, err := promptPassword("Password for new administrator (>= 12 chars; not echoed): ")
-	if err != nil {
-		fatal(err)
+	var pw string
+	if *passwordEnv != "" {
+		pw = os.Getenv(*passwordEnv)
+		if pw == "" {
+			fatal(*passwordEnv + " is empty or unset; set it in .env (which is gitignored) and re-run")
+		}
+		if len([]rune(pw)) < 12 {
+			fatal("password must be at least 12 characters")
+		}
+	} else {
+		var err error
+		pw, err = promptPassword("Password for new administrator (>= 12 chars; not echoed): ")
+		if err != nil {
+			fatal(err)
+		}
+		if len([]rune(pw)) < 12 {
+			fatal("password must be at least 12 characters")
+		}
+		pw2, err := promptPassword("Confirm password: ")
+		if err != nil {
+			fatal(err)
+		}
+		if pw != pw2 {
+			fatal("passwords do not match")
+		}
 	}
-	if len([]rune(pw)) < 12 {
-		fatal("password must be at least 12 characters")
-	}
-	pw2, err := promptPassword("Confirm password: ")
-	if err != nil {
-		fatal(err)
-	}
-	if pw != pw2 {
-		fatal("passwords do not match")
-	}
-
 	hash, err := auth.HashPassword(pw)
 	if err != nil {
 		fatal(err)

@@ -19,6 +19,7 @@ type Config struct {
 	TLSCertPath         string
 	TLSKeyPath          string
 	ListenAddr          string
+	WebDist             string // optional absolute path of the production web bundle
 	AttachmentStore     string // absolute path of attachment store directory
 	AttachmentMaxBytes  int64  // configured upload size limit, in bytes
 	ExtractTextMaxBytes int64  // configured extracted-text cap, in bytes
@@ -38,6 +39,7 @@ func Load() (*Config, error) {
 		TLSCertPath:         envOr("PMS_TLS_CERT_PATH", ""),
 		TLSKeyPath:          envOr("PMS_TLS_KEY_PATH", ""),
 		ListenAddr:          envOr("PMS_LISTEN_ADDR", ":8443"),
+		WebDist:             envOr("PMS_WEB_DIST", ""),
 		AttachmentStore:     envOr("PMS_ATTACHMENT_STORE", ""),
 		AttachmentMaxBytes:  parseInt64(envOr("PMS_ATTACHMENT_MAX_BYTES", ""), defaultAttachmentMaxBytes),
 		ExtractTextMaxBytes: parseInt64(envOr("PMS_EXTRACT_TEXT_MAX_BYTES", ""), defaultExtractTextMaxBytes),
@@ -59,6 +61,14 @@ func Load() (*Config, error) {
 	if err := validateAttachmentStore(c.AttachmentStore); err != nil {
 		return nil, err
 	}
+	if err := validateWebDist(c.WebDist); err != nil {
+		return nil, err
+	}
+	if c.WebDist != "" {
+		if err := validateWebDistSeparation(c.WebDist, c.AttachmentStore); err != nil {
+			return nil, err
+		}
+	}
 	if c.AttachmentMaxBytes <= 0 {
 		return nil, errors.New("PMS_ATTACHMENT_MAX_BYTES must be a positive integer")
 	}
@@ -73,6 +83,48 @@ func Load() (*Config, error) {
 	c.FieldKEK = kek
 
 	return c, nil
+}
+
+// validateWebDist leaves the existing API-only deployment unchanged when the
+// setting is empty. When configured, the server must be able to serve a real
+// production bundle rather than silently falling back to an invalid path.
+func validateWebDist(path string) error {
+	if path == "" {
+		return nil
+	}
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("PMS_WEB_DIST must be an absolute path; got %q", path)
+	}
+	dirInfo, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("PMS_WEB_DIST is not usable: %w", err)
+	}
+	if !dirInfo.IsDir() {
+		return fmt.Errorf("PMS_WEB_DIST must be a directory; %q is not", path)
+	}
+	return nil
+}
+
+func validateWebDistSeparation(webDist, attachmentStore string) error {
+	resolvedWebDist, err := filepath.EvalSymlinks(webDist)
+	if err != nil {
+		return fmt.Errorf("resolve PMS_WEB_DIST: %w", err)
+	}
+	resolvedAttachmentStore, err := filepath.EvalSymlinks(attachmentStore)
+	if err != nil {
+		return fmt.Errorf("resolve PMS_ATTACHMENT_STORE: %w", err)
+	}
+	if pathContains(resolvedWebDist, resolvedAttachmentStore) || pathContains(resolvedAttachmentStore, resolvedWebDist) {
+		// Static serving must never make encrypted attachment blobs reachable
+		// without the authenticated attachment handler.
+		return errors.New("PMS_WEB_DIST and PMS_ATTACHMENT_STORE must not overlap")
+	}
+	return nil
+}
+
+func pathContains(parent, child string) bool {
+	rel, err := filepath.Rel(parent, child)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // validateAttachmentStore refuses to start when the store path is missing,

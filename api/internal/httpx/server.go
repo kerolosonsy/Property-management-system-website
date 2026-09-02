@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
 
 	"pms/internal/attachments"
 	"pms/internal/auth"
@@ -126,7 +130,52 @@ func (s *Server) Routes(genHandler http.Handler) http.Handler {
 	mux.Handle("PUT /api/v1/custom-fields/{fieldId}", s.authed(adminRole, genHandler.ServeHTTP))
 	mux.Handle("DELETE /api/v1/custom-fields/{fieldId}", s.authed(adminRole, genHandler.ServeHTTP))
 
-	return logMiddleware(mux)
+	var handler http.Handler = mux
+	if s.cfg.WebDist != "" {
+		handler = serveWeb(mux, s.cfg.WebDist)
+	}
+	return logMiddleware(handler)
+}
+
+// serveWeb keeps the API mux as the sole handler for /api/v1/. Other GET
+// requests serve real bundle files when present and index.html otherwise so
+// Angular routes continue to work after a browser refresh.
+func serveWeb(api http.Handler, dist string) http.Handler {
+	resolvedDist, err := filepath.EvalSymlinks(dist)
+	if err != nil {
+		return api
+	}
+	indexFile := filepath.Join(resolvedDist, "index.html")
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1" || strings.HasPrefix(r.URL.Path, "/api/v1/") || r.Method != http.MethodGet {
+			api.ServeHTTP(w, r)
+			return
+		}
+
+		rel := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+		if candidate, ok := webFile(resolvedDist, rel); ok {
+			http.ServeFile(w, r, candidate)
+			return
+		}
+		http.ServeFile(w, r, indexFile)
+	})
+}
+
+func webFile(dist, requestedPath string) (string, bool) {
+	candidate, err := filepath.EvalSymlinks(filepath.Join(dist, filepath.FromSlash(requestedPath)))
+	if err != nil {
+		return "", false
+	}
+	fileInfo, err := os.Stat(candidate)
+	if err != nil || fileInfo.IsDir() {
+		return "", false
+	}
+	rel, err := filepath.Rel(dist, candidate)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return candidate, true
 }
 
 const (

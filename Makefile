@@ -22,6 +22,7 @@ COMPOSE := docker compose -f "$(ROOT)/infra/docker-compose.yml"
 LOAD_ENV = set -a; if [ -f "$(ENV_FILE)" ]; then . "$(ENV_FILE)"; fi; set +a;
 
 .PHONY: help env-check certs db-up db-down migrate generate build vet test check fmt dev run-api run-web logs psql reset-db seed-admin reset-admin-dev seed-demo clean
+.PHONY: setup
 
 help:
 	@printf '%s\n' \
@@ -47,6 +48,9 @@ help:
 		"reset-admin-dev  reset the local administrator password from .env" \
 		"seed-demo        load demonstration property data" \
 		"clean            remove generated build artifacts"
+
+setup:
+	bash "$(ROOT)/scripts/setup.sh"
 
 env-check:
 	@$(LOAD_ENV) \
