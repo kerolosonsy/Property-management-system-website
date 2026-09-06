@@ -27,75 +27,113 @@ import { CloseOnEscapeDirective } from '../../../shared/close-on-escape.directiv
         </div>
       </header>
 
-      <div class="card blueprint elev-sm">
-          <i class="corner tl"></i><i class="corner tr"></i>
-          <i class="corner bl"></i><i class="corner br"></i>
-        <p class="pms-note">{{ msgs.customFieldSensitiveNote }}</p>
+      <!-- The editor card and its pinned foot sit in one wrapper so the bar
+           releases once the operator scrolls on into the list below. -->
+      <div>
+        <div class="card blueprint elev-sm">
+          <i class="corner tl"></i><i class="corner tr"></i> <i class="corner bl"></i
+          ><i class="corner br"></i>
+          <p class="pms-note">{{ msgs.customFieldSensitiveNote }}</p>
 
-        <h2>{{ editing() ? msgs.customFieldEdit : msgs.customFieldAdd }}</h2>
-        <form [formGroup]="form" (ngSubmit)="onSubmit()">
-          <div class="field pms-field">
-            <label for="label">{{ msgs.customFieldLabel }}</label>
-            <input id="label" class="input" type="text" formControlName="label" appWesternDigits />
-            @if (form.controls.label.touched && form.controls.label.invalid) {
-              <div class="pms-field-error">{{ msgs.customFieldLabelLength }}</div>
-            }
-            @if (fieldError('label'); as m) { <div class="pms-field-error">{{ m }}</div> }
-          </div>
+          <h2>{{ editing() ? msgs.customFieldEdit : msgs.customFieldAdd }}</h2>
+          <form id="pms-custom-field-form" [formGroup]="form" (ngSubmit)="onSubmit()">
+            <div class="pms-form-grid">
+              <div class="field pms-field">
+                <label for="label">{{ msgs.customFieldLabel }}</label>
+                <input
+                  id="label"
+                  class="input"
+                  type="text"
+                  formControlName="label"
+                  appWesternDigits
+                />
+                @if (form.controls.label.touched && form.controls.label.invalid) {
+                  <div class="pms-field-error">{{ msgs.customFieldLabelLength }}</div>
+                }
+                @if (fieldError('label'); as m) {
+                  <div class="pms-field-error">{{ m }}</div>
+                }
+              </div>
 
-          <div class="field pms-field">
-            <label for="fieldType">{{ msgs.customFieldType }}</label>
-            <select id="fieldType" class="input" formControlName="fieldType">
-              <option [ngValue]="''" disabled>—</option>
-              <option [ngValue]="'text'">{{ msgs.customFieldTypeText }}</option>
-              <option [ngValue]="'dropdown'">{{ msgs.customFieldTypeDropdown }}</option>
-              <option [ngValue]="'multiselect'">{{ msgs.customFieldTypeMultiselect }}</option>
-              <option [ngValue]="'checkbox'">{{ msgs.customFieldTypeCheckbox }}</option>
-            </select>
-            @if (fieldError('fieldType'); as m) { <div class="pms-field-error">{{ m }}</div> }
-          </div>
+              <div class="field pms-field">
+                <label for="fieldType">{{ msgs.customFieldType }}</label>
+                <select id="fieldType" class="input" formControlName="fieldType">
+                  <option [ngValue]="''" disabled>—</option>
+                  <option [ngValue]="'text'">{{ msgs.customFieldTypeText }}</option>
+                  <option [ngValue]="'dropdown'">{{ msgs.customFieldTypeDropdown }}</option>
+                  <option [ngValue]="'multiselect'">{{ msgs.customFieldTypeMultiselect }}</option>
+                  <option [ngValue]="'checkbox'">{{ msgs.customFieldTypeCheckbox }}</option>
+                </select>
+                @if (fieldError('fieldType'); as m) {
+                  <div class="pms-field-error">{{ m }}</div>
+                }
+              </div>
 
-          <div class="field pms-field pms-field-checkbox">
-            <input id="isSensitive" type="checkbox" formControlName="isSensitive"
-                   [attr.aria-describedby]="sensitiveHintId()"
-                   [disabled]="sensitiveDisabled()" />
-            <label for="isSensitive">{{ msgs.customFieldSensitive }}</label>
-          </div>
-          @if (sensitiveHint(); as h) {
-            <div [id]="sensitiveHintId()" class="pms-field-hint">{{ h }}</div>
-          }
+              <div class="field pms-field pms-field-checkbox">
+                <input
+                  id="isSensitive"
+                  type="checkbox"
+                  formControlName="isSensitive"
+                  [attr.aria-describedby]="sensitiveHintId()"
+                  [disabled]="sensitiveDisabled()"
+                />
+                <label for="isSensitive">{{ msgs.customFieldSensitive }}</label>
+                @if (sensitiveHint(); as h) {
+                  <div [id]="sensitiveHintId()" class="pms-field-hint">{{ h }}</div>
+                }
+              </div>
 
-          @if (form.controls.fieldType.value === 'dropdown' || form.controls.fieldType.value === 'multiselect') {
-            <div class="field pms-field">
-              <label>{{ msgs.customFieldChoices }}</label>
-              @for (ctrl of choicesControls(); track $index) {
-                <div class="pms-choice-row">
-                  <input class="input" type="text" [formControl]="ctrl" appWesternDigits />
-                  <button type="button" class="btn btn-secondary" (click)="removeChoice($index)">{{ msgs.customFieldChoiceRemove }}</button>
+              @if (
+                form.controls.fieldType.value === 'dropdown' ||
+                form.controls.fieldType.value === 'multiselect'
+              ) {
+                <div class="field pms-field pms-form-grid-full">
+                  <label>{{ msgs.customFieldChoices }}</label>
+                  @for (ctrl of choicesControls(); track $index) {
+                    <div class="pms-choice-row">
+                      <input class="input" type="text" [formControl]="ctrl" appWesternDigits />
+                      <button
+                        type="button"
+                        class="btn btn-secondary"
+                        (click)="removeChoice($index)"
+                      >
+                        {{ msgs.customFieldChoiceRemove }}
+                      </button>
+                    </div>
+                  }
+                  <button type="button" class="btn btn-secondary" (click)="addChoice()">
+                    {{ msgs.customFieldChoiceAdd }}
+                  </button>
                 </div>
               }
-              <button type="button" class="btn btn-secondary" (click)="addChoice()">{{ msgs.customFieldChoiceAdd }}</button>
             </div>
-          }
 
-          @if (errorMessage(); as msg) {
-            <div class="pms-error-banner">{{ msg }}</div>
-          }
-
-          <div style="display: flex; gap: .75rem;">
-            <button type="submit" class="btn btn-primary" [disabled]="submitting() || form.invalid">
-              {{ submitting() ? msgs.loading : msgs.save }}
-            </button>
-            @if (editing()) {
-              <button type="button" class="btn btn-secondary" (click)="cancelEdit()">{{ msgs.cancel }}</button>
+            @if (errorMessage(); as msg) {
+              <div class="pms-error-banner">{{ msg }}</div>
             }
-          </div>
-        </form>
+          </form>
+        </div>
+
+        <footer class="pms-view-foot">
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="submitting() || form.invalid"
+            form="pms-custom-field-form"
+          >
+            {{ submitting() ? msgs.loading : msgs.save }}
+          </button>
+          @if (editing()) {
+            <button type="button" class="btn btn-secondary" (click)="cancelEdit()">
+              {{ msgs.cancel }}
+            </button>
+          }
+        </footer>
       </div>
 
       <div class="card blueprint elev-sm">
-          <i class="corner tl"></i><i class="corner tr"></i>
-          <i class="corner bl"></i><i class="corner br"></i>
+        <i class="corner tl"></i><i class="corner tr"></i> <i class="corner bl"></i
+        ><i class="corner br"></i>
         @if (items().length === 0) {
           <p class="pms-empty">{{ msgs.lookupEmpty }}</p>
         } @else {
@@ -121,8 +159,12 @@ import { CloseOnEscapeDirective } from '../../../shared/close-on-escape.directiv
                     }
                   </td>
                   <td>
-                    <button type="button" class="btn btn-secondary" (click)="startEdit(f)">{{ msgs.edit }}</button>
-                    <button type="button" class="btn btn-secondary" (click)="askRemove(f)">{{ msgs.customFieldRemove }}</button>
+                    <button type="button" class="btn btn-secondary" (click)="startEdit(f)">
+                      {{ msgs.edit }}
+                    </button>
+                    <button type="button" class="btn btn-secondary" (click)="askRemove(f)">
+                      {{ msgs.customFieldRemove }}
+                    </button>
                   </td>
                 </tr>
               }
@@ -138,16 +180,32 @@ import { CloseOnEscapeDirective } from '../../../shared/close-on-escape.directiv
           <h2>{{ msgs.customFieldRemove }}</h2>
           <p>{{ f.label }}</p>
           <div class="pms-modal-actions">
-            <button type="button" class="btn btn-secondary" (click)="cancelRemove()">{{ msgs.cancel }}</button>
-            <button type="button" class="btn btn-primary" (click)="doRemove(f)" [disabled]="removing()">{{ msgs.customFieldRemove }}</button>
+            <button type="button" class="btn btn-secondary" (click)="cancelRemove()">
+              {{ msgs.cancel }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              (click)="doRemove(f)"
+              [disabled]="removing()"
+            >
+              {{ msgs.customFieldRemove }}
+            </button>
           </div>
         </div>
       </div>
     }
   `,
-  styles: [`
-    .pms-choice-row { display: flex; gap: .5rem; align-items: center; margin-block-end: .5rem; }
-  `],
+  styles: [
+    `
+      .pms-choice-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin-block-end: 0.5rem;
+      }
+    `,
+  ],
 })
 export class CustomFieldsComponent implements OnInit {
   protected readonly msgs = ARABIC_MESSAGES;
@@ -213,10 +271,14 @@ export class CustomFieldsComponent implements OnInit {
 
   protected typeLabel(t: CustomFieldType): string {
     switch (t) {
-      case 'text': return this.msgs.customFieldTypeText;
-      case 'dropdown': return this.msgs.customFieldTypeDropdown;
-      case 'multiselect': return this.msgs.customFieldTypeMultiselect;
-      case 'checkbox': return this.msgs.customFieldTypeCheckbox;
+      case 'text':
+        return this.msgs.customFieldTypeText;
+      case 'dropdown':
+        return this.msgs.customFieldTypeDropdown;
+      case 'multiselect':
+        return this.msgs.customFieldTypeMultiselect;
+      case 'checkbox':
+        return this.msgs.customFieldTypeCheckbox;
     }
     return t;
   }
@@ -229,7 +291,13 @@ export class CustomFieldsComponent implements OnInit {
   }
 
   protected addChoice(): void {
-    this.choicesControls.update((arr) => [...arr, new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(60)] })]);
+    this.choicesControls.update((arr) => [
+      ...arr,
+      new FormControl('', {
+        nonNullable: true,
+        validators: [Validators.required, Validators.maxLength(60)],
+      }),
+    ]);
   }
 
   protected removeChoice(i: number): void {
@@ -276,7 +344,9 @@ export class CustomFieldsComponent implements OnInit {
     this.fieldErrors.set({});
 
     const raw = this.form.getRawValue();
-    const choices = this.choicesControls().map((c) => c.value).filter((s) => s.trim() !== '');
+    const choices = this.choicesControls()
+      .map((c) => c.value)
+      .filter((s) => s.trim() !== '');
     const editing = this.editing();
 
     if (editing) {
@@ -289,40 +359,52 @@ export class CustomFieldsComponent implements OnInit {
       const removeChoiceIds = editing.choices
         .filter((c) => !newLabels.has(c.label))
         .map((c) => c.id);
-      const addChoices = choices.filter((label) => !priorIDs.has(label.trim() === label.trim() ? '' : ''));
+      const addChoices = choices.filter(
+        (label) => !priorIDs.has(label.trim() === label.trim() ? '' : ''),
+      );
       const _ = addChoices;
       // Build from the new label set directly — easier than diffing.
-      this.service.updateCustomField({
-        fieldId: editing.id,
-        customFieldUpdate: {
-          label: raw.label.trim(),
-          removeChoiceIds,
-          addChoices: choices,
-        },
-      }, 'body').subscribe({
-        next: () => {
-          this.submitting.set(false);
-          this.cancelEdit();
-          this.refresh();
-        },
-        error: (err: ApiError) => this.handleError(err),
-      });
+      this.service
+        .updateCustomField(
+          {
+            fieldId: editing.id,
+            customFieldUpdate: {
+              label: raw.label.trim(),
+              removeChoiceIds,
+              addChoices: choices,
+            },
+          },
+          'body',
+        )
+        .subscribe({
+          next: () => {
+            this.submitting.set(false);
+            this.cancelEdit();
+            this.refresh();
+          },
+          error: (err: ApiError) => this.handleError(err),
+        });
     } else {
-      this.service.createCustomField({
-        customFieldCreate: {
-          label: raw.label.trim(),
-          fieldType: raw.fieldType as CustomFieldType,
-          isSensitive: raw.isSensitive,
-          choices,
-        },
-      }, 'body').subscribe({
-        next: () => {
-          this.submitting.set(false);
-          this.cancelEdit();
-          this.refresh();
-        },
-        error: (err: ApiError) => this.handleError(err),
-      });
+      this.service
+        .createCustomField(
+          {
+            customFieldCreate: {
+              label: raw.label.trim(),
+              fieldType: raw.fieldType as CustomFieldType,
+              isSensitive: raw.isSensitive,
+              choices,
+            },
+          },
+          'body',
+        )
+        .subscribe({
+          next: () => {
+            this.submitting.set(false);
+            this.cancelEdit();
+            this.refresh();
+          },
+          error: (err: ApiError) => this.handleError(err),
+        });
     }
   }
 

@@ -17,83 +17,125 @@ import { Role } from '../../../api/model/role.model';
   imports: [CommonModule, ReactiveFormsModule, RouterLink, WesternDigitsDirective],
   template: `
     <section class="pms-page">
-      <div class="card" style="max-inline-size: 36rem; margin-inline: auto;">
-        <header style="display: flex; align-items: center; gap: 1rem;">
-          <h1 style="margin: 0; flex: 1;">{{ msgs.create }}</h1>
-          <a routerLink="/settings/users">{{ msgs.backToList }}</a>
-        </header>
+      <header class="pms-view-head">
+        <div>
+          <h1>{{ msgs.userCreateTitle }}</h1>
+          <div class="pms-crumb">{{ msgs.settings }} / {{ msgs.usersList }}</div>
+        </div>
+        <div class="pms-toolbar-spacer"></div>
+        <a routerLink="/settings/users" class="btn btn-secondary">{{ msgs.backToList }}</a>
+      </header>
 
-        <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-          <div class="field pms-field">
-            <label for="username">{{ msgs.username }}</label>
-            <input class="input" id="username" type="text" formControlName="username" appWesternDigits
-                   autocomplete="off" autocapitalize="off" spellcheck="false" />
-            @if (form.controls.username.touched && form.controls.username.invalid) {
-              <div class="pms-field-error">
-                @if (form.controls.username.hasError('required')) { {{ msgs.requiredField }} }
-                @else { {{ msgs.usernameLength }} }
-              </div>
-            }
-            @if (fieldError('username'); as msg) {
-              <div class="pms-field-error">{{ msg }}</div>
-            }
-          </div>
+      <div class="card" style="max-inline-size: 48rem; margin-inline: auto;">
+        <form id="pms-user-create-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+          <div class="pms-form-grid">
+            <div class="field pms-field">
+              <label for="username">{{ msgs.username }}</label>
+              <input
+                class="input"
+                id="username"
+                type="text"
+                formControlName="username"
+                appWesternDigits
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+              @if (form.controls.username.touched && form.controls.username.invalid) {
+                <div class="pms-field-error">
+                  @if (form.controls.username.hasError('required')) {
+                    {{ msgs.requiredField }}
+                  } @else {
+                    {{ msgs.usernameLength }}
+                  }
+                </div>
+              }
+              @if (fieldError('username'); as msg) {
+                <div class="pms-field-error">{{ msg }}</div>
+              }
+            </div>
 
-          <div class="field pms-field">
-            <label for="displayName">{{ msgs.displayName }}</label>
-            <input class="input" id="displayName" type="text" formControlName="displayName" appWesternDigits />
-            @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
-              <div class="pms-field-error">
-                @if (form.controls.displayName.hasError('required')) { {{ msgs.requiredField }} }
-                @else { {{ msgs.displayNameLength }} }
-              </div>
-            }
-            @if (fieldError('displayName'); as msg) {
-              <div class="pms-field-error">{{ msg }}</div>
-            }
-          </div>
+            <div class="field pms-field">
+              <label for="displayName">{{ msgs.displayName }}</label>
+              <input
+                class="input"
+                id="displayName"
+                type="text"
+                formControlName="displayName"
+                appWesternDigits
+              />
+              @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
+                <div class="pms-field-error">
+                  @if (form.controls.displayName.hasError('required')) {
+                    {{ msgs.requiredField }}
+                  } @else {
+                    {{ msgs.displayNameLength }}
+                  }
+                </div>
+              }
+              @if (fieldError('displayName'); as msg) {
+                <div class="pms-field-error">{{ msg }}</div>
+              }
+            </div>
 
-          <div class="field pms-field">
-            <label for="role">{{ msgs.role }}</label>
-            <select class="input" id="role" formControlName="role">
-              <option [ngValue]="''" disabled>{{ msgs.selectRole }}</option>
-              <option [ngValue]="'admin'">{{ msgs.roleAdmin }}</option>
-              <option [ngValue]="'manager'">{{ msgs.roleManager }}</option>
-            </select>
-            @if (form.controls.role.touched && form.controls.role.hasError('required')) {
-              <div class="pms-field-error">{{ msgs.requiredField }}</div>
-            }
-            @if (fieldError('role'); as msg) {
-              <div class="pms-field-error">{{ msg }}</div>
-            }
-          </div>
+            <div class="field pms-field">
+              <label for="role">{{ msgs.role }}</label>
+              <select class="input" id="role" formControlName="role">
+                <option [ngValue]="''" disabled>{{ msgs.selectRole }}</option>
+                <option [ngValue]="'admin'">{{ msgs.roleAdmin }}</option>
+                <option [ngValue]="'manager'">{{ msgs.roleManager }}</option>
+              </select>
+              @if (form.controls.role.touched && form.controls.role.hasError('required')) {
+                <div class="pms-field-error">{{ msgs.requiredField }}</div>
+              }
+              @if (fieldError('role'); as msg) {
+                <div class="pms-field-error">{{ msg }}</div>
+              }
+            </div>
 
-          <div class="field pms-field">
-            <label for="initialPassword">{{ msgs.initialPassword }}</label>
-            <input class="input" id="initialPassword" type="password" formControlName="initialPassword" autocomplete="new-password" />
-            @if (form.controls.initialPassword.touched && form.controls.initialPassword.invalid) {
-              <div class="pms-field-error">
-                @if (form.controls.initialPassword.hasError('required')) { {{ msgs.requiredField }} }
-                @else { {{ msgs.passwordTooShort }} }
-              </div>
-            }
-            @if (fieldError('initialPassword'); as msg) {
-              <div class="pms-field-error">{{ msg }}</div>
-            }
+            <div class="field pms-field">
+              <label for="initialPassword">{{ msgs.initialPassword }}</label>
+              <input
+                class="input"
+                id="initialPassword"
+                type="password"
+                formControlName="initialPassword"
+                autocomplete="new-password"
+              />
+              @if (form.controls.initialPassword.touched && form.controls.initialPassword.invalid) {
+                <div class="pms-field-error">
+                  @if (form.controls.initialPassword.hasError('required')) {
+                    {{ msgs.requiredField }}
+                  } @else {
+                    {{ msgs.passwordTooShort }}
+                  }
+                </div>
+              }
+              @if (fieldError('initialPassword'); as msg) {
+                <div class="pms-field-error">{{ msg }}</div>
+              }
+            </div>
           </div>
 
           @if (errorMessage(); as msg) {
             <div class="pms-error-banner">{{ msg }}</div>
           }
-
-          <div style="display: flex; gap: 0.75rem;">
-            <button type="submit" class="btn btn-primary" [disabled]="submitting() || form.invalid">
-              {{ submitting() ? msgs.loading : msgs.create }}
-            </button>
-            <a routerLink="/settings/users" class="btn btn-secondary">{{ msgs.cancel }}</a>
-          </div>
         </form>
       </div>
+
+      <!-- The action bar pins to the foot; its submit reaches the form by
+           id. Same buttons, same bindings as the row it replaces. -->
+      <footer class="pms-view-foot">
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="submitting() || form.invalid"
+          form="pms-user-create-form"
+        >
+          {{ submitting() ? msgs.loading : msgs.create }}
+        </button>
+        <a routerLink="/settings/users" class="btn btn-secondary">{{ msgs.cancel }}</a>
+      </footer>
     </section>
   `,
 })
@@ -129,30 +171,35 @@ export class UserCreateComponent {
 
     const raw = this.form.getRawValue();
     const role = raw.role as Role;
-    this.users.createUser({
-      createUserRequest: {
-        username: raw.username,
-        displayName: raw.displayName,
-        role,
-        initialPassword: raw.initialPassword,
-      },
-    }, 'body').subscribe({
-      next: () => {
-        this.submitting.set(false);
-        void this.router.navigate(['/settings/users']);
-      },
-      error: (err: ApiError) => {
-        this.submitting.set(false);
-        if (err.code === 'conflict' && err.fields?.['username']) {
-          this.fieldErrors.set({ username: err.fields['username'] });
-          this.errorMessage.set(this.msgs.usernameTaken);
-        } else if (err.fields) {
-          this.fieldErrors.set(err.fields);
-          this.errorMessage.set(err.message);
-        } else {
-          this.errorMessage.set(err.message || this.msgs.internalError);
-        }
-      },
-    });
+    this.users
+      .createUser(
+        {
+          createUserRequest: {
+            username: raw.username,
+            displayName: raw.displayName,
+            role,
+            initialPassword: raw.initialPassword,
+          },
+        },
+        'body',
+      )
+      .subscribe({
+        next: () => {
+          this.submitting.set(false);
+          void this.router.navigate(['/settings/users']);
+        },
+        error: (err: ApiError) => {
+          this.submitting.set(false);
+          if (err.code === 'conflict' && err.fields?.['username']) {
+            this.fieldErrors.set({ username: err.fields['username'] });
+            this.errorMessage.set(this.msgs.usernameTaken);
+          } else if (err.fields) {
+            this.fieldErrors.set(err.fields);
+            this.errorMessage.set(err.message);
+          } else {
+            this.errorMessage.set(err.message || this.msgs.internalError);
+          }
+        },
+      });
   }
 }

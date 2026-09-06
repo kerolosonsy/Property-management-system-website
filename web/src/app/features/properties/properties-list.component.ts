@@ -205,38 +205,40 @@ const PAGE_SIZES = [10, 25, 50, 100] as const;
               }
             </tbody>
           </table>
-
-          @if (items().length > 0) {
-            <div class="pms-paging">
-              <span>{{ rangeLabel() }}</span>
-              <div class="pms-toolbar-spacer"></div>
-              <label>
-                <select class="input" [formControl]="pageSizeCtrl">
-                  @for (n of pageSizes; track n) {
-                    <option [ngValue]="n">{{ n }}</option>
-                  }
-                </select>
-              </label>
-              <button
-                type="button"
-                class="btn btn-secondary"
-                (click)="prev()"
-                [disabled]="page() <= 1"
-              >
-                {{ msgs.pagePrevious }}
-              </button>
-              <span>{{ format(msgs.pageOf, { page: page() }) }}</span>
-              <button
-                type="button"
-                class="btn btn-secondary"
-                (click)="next()"
-                [disabled]="page() * pageSize() >= totalItems()"
-              >
-                {{ msgs.pageNext }}
-              </button>
-            </div>
-          }
         </div>
+
+        <!-- The paging bar pins to the foot so a full page of rows never
+             means scrolling to the bottom for the next page and back up. -->
+        @if (items().length > 0) {
+          <footer class="pms-view-foot pms-paging">
+            <span>{{ rangeLabel() }}</span>
+            <div class="pms-toolbar-spacer"></div>
+            <label>
+              <select class="input" [formControl]="pageSizeCtrl">
+                @for (n of pageSizes; track n) {
+                  <option [ngValue]="n">{{ n }}</option>
+                }
+              </select>
+            </label>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="prev()"
+              [disabled]="page() <= 1"
+            >
+              {{ msgs.pagePrevious }}
+            </button>
+            <span>{{ format(msgs.pageOf, { page: page() }) }}</span>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="next()"
+              [disabled]="page() * pageSize() >= totalItems()"
+            >
+              {{ msgs.pageNext }}
+            </button>
+          </footer>
+        }
       </div>
     </section>
   `,

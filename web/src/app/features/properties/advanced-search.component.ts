@@ -39,142 +39,157 @@ interface CustomFilterState {
           <div class="pms-crumb">{{ msgs.properties }} / {{ msgs.advancedSearch }}</div>
         </div>
         <div class="pms-toolbar-spacer"></div>
+        <!-- Navigation stays in the head; the filter actions (search, clear)
+             live together in the pinned foot rather than being split across
+             both bars. -->
         <a routerLink="/properties" class="btn btn-secondary">{{ msgs.backToList }}</a>
-        <button type="button" class="btn btn-secondary" (click)="clearAll()">
-          {{ msgs.clearAllFilters }}
-        </button>
       </header>
 
       <div class="card">
         <p class="pms-note">{{ msgs.customFieldSensitiveSearch }}</p>
 
-        <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-          <div class="pms-filters">
-            <div class="field pms-field pms-field-grow">
-              <label for="q">{{ msgs.search }}</label>
-              <input
-                id="q"
-                class="input"
-                type="search"
-                formControlName="q"
-                appWesternDigits
-                [placeholder]="msgs.searchPlaceholder"
-              />
-            </div>
-            <div class="field pms-field">
-              <label for="propertyTypeId">{{ msgs.propertyType }}</label>
-              <select id="propertyTypeId" class="input" formControlName="propertyTypeId">
-                <option [ngValue]="''">{{ msgs.allItems }}</option>
-                @for (t of propertyTypes(); track t.id) {
-                  <option [ngValue]="t.id">{{ t.label }}</option>
-                }
-              </select>
-            </div>
-            <div class="field pms-field">
-              <label for="areaId">{{ msgs.propertyArea }}</label>
-              <select id="areaId" class="input" formControlName="areaId">
-                <option [ngValue]="''">{{ msgs.allItems }}</option>
-                @for (a of areas(); track a.id) {
-                  <option [ngValue]="a.id">{{ a.label }}</option>
-                }
-              </select>
-            </div>
-            <div class="field pms-field pms-field-grow">
-              <label for="documentText">{{ msgs.documentSearch }}</label>
-              <input
-                id="documentText"
-                class="input"
-                type="search"
-                formControlName="documentText"
-                appWesternDigits
-                [placeholder]="msgs.documentSearchPlaceholder"
-              />
-              <div class="pms-note">{{ msgs.documentSearchSensitiveExcluded }}</div>
-            </div>
-            <div class="field pms-field pms-field-grow">
-              <label for="attachmentName">{{ msgs.attachmentNameSearch }}</label>
-              <input id="attachmentName" class="input" type="search" formControlName="attachmentName"
-                     appWesternDigits [placeholder]="msgs.attachmentNameSearch" />
-              <div class="pms-note">{{ msgs.attachmentNameSearchHint }}</div>
-            </div>
-            <div class="field pms-field">
-              <label for="hasAttachments">{{ msgs.hasAttachmentsFilter }}</label>
-              <select id="hasAttachments" class="input" formControlName="hasAttachments">
-                <option [ngValue]="'any'">{{ msgs.hasAttachmentsAny }}</option>
-                <option [ngValue]="'yes'">{{ msgs.hasAttachmentsYes }}</option>
-                <option [ngValue]="'no'">{{ msgs.hasAttachmentsNo }}</option>
-              </select>
-            </div>
-            <div class="field pms-field pms-field-checkbox">
-              <label for="includeArchived">{{ msgs.includeArchived }}</label>
-              <input id="includeArchived" type="checkbox" formControlName="includeArchived" />
-            </div>
-          </div>
+        <!-- Collapsed with [hidden], not @if, so the filter controls stay in
+             the DOM and keep their values while only the results show. -->
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="toggleFilters()"
+          [attr.aria-expanded]="filtersOpen()"
+        >
+          {{ filtersOpen() ? msgs.filtersHide : msgs.filtersShow }}
+        </button>
 
-          @if (filterStates().length > 0) {
-            <h3>{{ msgs.customFields }}</h3>
-            @for (fs of filterStates(); track fs.field.id) {
+        <form id="pms-advanced-search-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+          <div [hidden]="!filtersOpen()">
+            <div class="pms-form-grid">
               <div class="field pms-field">
-                <label [attr.for]="'adv-' + fs.field.id">{{ fs.field.label }}</label>
-                @switch (fs.field.fieldType) {
-                  @case ('text') {
-                    <input
-                      class="input"
-                      [attr.id]="'adv-' + fs.field.id"
-                      type="text"
-                      [formControl]="fs.text"
-                      appWesternDigits
-                    />
+                <label for="q">{{ msgs.search }}</label>
+                <input
+                  id="q"
+                  class="input"
+                  type="search"
+                  formControlName="q"
+                  appWesternDigits
+                  [placeholder]="msgs.searchPlaceholder"
+                />
+              </div>
+              <div class="field pms-field">
+                <label for="propertyTypeId">{{ msgs.propertyType }}</label>
+                <select id="propertyTypeId" class="input" formControlName="propertyTypeId">
+                  <option [ngValue]="''">{{ msgs.allItems }}</option>
+                  @for (t of propertyTypes(); track t.id) {
+                    <option [ngValue]="t.id">{{ t.label }}</option>
                   }
-                  @case ('dropdown') {
-                    <select
-                      class="input"
-                      [attr.id]="'adv-' + fs.field.id"
-                      [formControl]="fs.choice"
-                    >
-                      <option [ngValue]="''">—</option>
-                      @for (ch of fs.field.choices; track ch.id) {
-                        <option [ngValue]="ch.id">{{ ch.label }}</option>
+                </select>
+              </div>
+              <div class="field pms-field">
+                <label for="areaId">{{ msgs.propertyArea }}</label>
+                <select id="areaId" class="input" formControlName="areaId">
+                  <option [ngValue]="''">{{ msgs.allItems }}</option>
+                  @for (a of areas(); track a.id) {
+                    <option [ngValue]="a.id">{{ a.label }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field pms-field">
+                <label for="documentText">{{ msgs.documentSearch }}</label>
+                <input
+                  id="documentText"
+                  class="input"
+                  type="search"
+                  formControlName="documentText"
+                  appWesternDigits
+                  [placeholder]="msgs.documentSearchPlaceholder"
+                />
+                <div class="pms-note">{{ msgs.documentSearchSensitiveExcluded }}</div>
+              </div>
+              <div class="field pms-field">
+                <label for="attachmentName">{{ msgs.attachmentNameSearch }}</label>
+                <input
+                  id="attachmentName"
+                  class="input"
+                  type="search"
+                  formControlName="attachmentName"
+                  appWesternDigits
+                  [placeholder]="msgs.attachmentNameSearch"
+                />
+                <div class="pms-note">{{ msgs.attachmentNameSearchHint }}</div>
+              </div>
+              <div class="field pms-field">
+                <label for="hasAttachments">{{ msgs.hasAttachmentsFilter }}</label>
+                <select id="hasAttachments" class="input" formControlName="hasAttachments">
+                  <option [ngValue]="'any'">{{ msgs.hasAttachmentsAny }}</option>
+                  <option [ngValue]="'yes'">{{ msgs.hasAttachmentsYes }}</option>
+                  <option [ngValue]="'no'">{{ msgs.hasAttachmentsNo }}</option>
+                </select>
+              </div>
+              <div class="field pms-field pms-field-checkbox">
+                <label for="includeArchived">{{ msgs.includeArchived }}</label>
+                <input id="includeArchived" type="checkbox" formControlName="includeArchived" />
+              </div>
+            </div>
+
+            @if (filterStates().length > 0) {
+              <h3>{{ msgs.customFields }}</h3>
+              <div class="pms-form-grid">
+                @for (fs of filterStates(); track fs.field.id) {
+                  <div
+                    class="field pms-field"
+                    [class.pms-form-grid-full]="fs.field.fieldType === 'multiselect'"
+                  >
+                    <label [attr.for]="'adv-' + fs.field.id">{{ fs.field.label }}</label>
+                    @switch (fs.field.fieldType) {
+                      @case ('text') {
+                        <input
+                          class="input"
+                          [attr.id]="'adv-' + fs.field.id"
+                          type="text"
+                          [formControl]="fs.text"
+                          appWesternDigits
+                        />
                       }
-                    </select>
-                  }
-                  @case ('multiselect') {
-                    <div class="pms-multi-row">
-                      @for (ch of fs.field.choices; track ch.id) {
-                        <label class="pms-multi-option">
-                          <input
-                            type="checkbox"
-                            [checked]="fs.choices.value.includes(ch.id)"
-                            (change)="toggleMulti(fs, ch.id, $event)"
-                          />
-                          {{ ch.label }}
-                        </label>
+                      @case ('dropdown') {
+                        <select
+                          class="input"
+                          [attr.id]="'adv-' + fs.field.id"
+                          [formControl]="fs.choice"
+                        >
+                          <option [ngValue]="''">—</option>
+                          @for (ch of fs.field.choices; track ch.id) {
+                            <option [ngValue]="ch.id">{{ ch.label }}</option>
+                          }
+                        </select>
                       }
-                    </div>
-                  }
-                  @case ('checkbox') {
-                    <select
-                      class="input"
-                      [attr.id]="'adv-' + fs.field.id"
-                      [formControl]="fs.checked"
-                    >
-                      <option [ngValue]="null">—</option>
-                      <option [ngValue]="true">{{ msgs.yes }}</option>
-                      <option [ngValue]="false">{{ msgs.no }}</option>
-                    </select>
-                  }
+                      @case ('multiselect') {
+                        <div class="pms-multi-row">
+                          @for (ch of fs.field.choices; track ch.id) {
+                            <label class="pms-multi-option">
+                              <input
+                                type="checkbox"
+                                [checked]="fs.choices.value.includes(ch.id)"
+                                (change)="toggleMulti(fs, ch.id, $event)"
+                              />
+                              {{ ch.label }}
+                            </label>
+                          }
+                        </div>
+                      }
+                      @case ('checkbox') {
+                        <select
+                          class="input"
+                          [attr.id]="'adv-' + fs.field.id"
+                          [formControl]="fs.checked"
+                        >
+                          <option [ngValue]="null">—</option>
+                          <option [ngValue]="true">{{ msgs.yes }}</option>
+                          <option [ngValue]="false">{{ msgs.no }}</option>
+                        </select>
+                      }
+                    }
+                  </div>
                 }
               </div>
             }
-          }
-
-          <div style="display: flex; gap: 0.75rem; margin-block-start: 1rem;">
-            <button type="submit" class="btn btn-primary" [disabled]="searching()">
-              {{ msgs.search }}
-            </button>
-            <button type="button" class="btn btn-secondary" (click)="clearAll()">
-              {{ msgs.clearAllFilters }}
-            </button>
           </div>
         </form>
 
@@ -233,6 +248,24 @@ interface CustomFilterState {
           <p class="pms-empty">{{ msgs.propertyNoMatch }}</p>
         }
       </div>
+
+      <!-- The search actions pin to the foot so a search can be re-run or
+           cleared from anywhere in the results. The submit reaches the form
+           by its id — the form itself may be collapsed out of sight, never
+           out of the DOM. -->
+      <footer class="pms-view-foot">
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="searching()"
+          form="pms-advanced-search-form"
+        >
+          {{ msgs.search }}
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="clearAll()">
+          {{ msgs.clearAllFilters }}
+        </button>
+      </footer>
     </section>
   `,
 })
@@ -253,6 +286,15 @@ export class AdvancedSearchComponent implements OnInit {
   protected readonly searched = signal(false);
   protected readonly searching = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+
+  // The filter block collapses so the results are reachable without
+  // scrolling past a wall of inputs. Default open; nothing is remembered —
+  // collapsing is a view convenience, not state.
+  protected readonly filtersOpen = signal(true);
+
+  protected toggleFilters(): void {
+    this.filtersOpen.update((open) => !open);
+  }
 
   protected readonly form = new FormGroup({
     q: new FormControl('', { nonNullable: true }),
@@ -376,8 +418,8 @@ export class AdvancedSearchComponent implements OnInit {
           advancedSearch: {
             q: raw.q || undefined,
             documentText: raw.documentText || undefined,
-        attachmentName: raw.attachmentName || undefined,
-        hasAttachments: (raw.hasAttachments || 'any') as AdvancedSearch.HasAttachmentsEnum,
+            attachmentName: raw.attachmentName || undefined,
+            hasAttachments: (raw.hasAttachments || 'any') as AdvancedSearch.HasAttachmentsEnum,
             propertyTypeId: raw.propertyTypeId || undefined,
             areaId: raw.areaId || undefined,
             includeArchived: raw.includeArchived,

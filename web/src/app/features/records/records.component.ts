@@ -45,13 +45,16 @@ interface FilterValues {
   imports: [CommonModule, ReactiveFormsModule, CloseOnEscapeDirective],
   template: `
     <section class="pms-page">
-      <div class="card">
-        <h1>{{ msgs.recordsList }}</h1>
+      <header class="pms-view-head">
+        <div>
+          <h1>{{ msgs.recordsList }}</h1>
+          <div class="pms-crumb">{{ msgs.settings }} / {{ msgs.recordsList }}</div>
+        </div>
+      </header>
 
-        <form [formGroup]="form" (ngSubmit)="applyFilters()" novalidate>
-          <div
-            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem;"
-          >
+      <div class="card">
+        <form id="pms-records-filters" [formGroup]="form" (ngSubmit)="applyFilters()" novalidate>
+          <div class="pms-form-grid">
             <div class="field pms-field">
               <label for="actorId">{{ msgs.filterByActor }}</label>
               <select class="input" id="actorId" formControlName="actorId">
@@ -87,12 +90,6 @@ interface FilterValues {
               <label for="to">{{ msgs.filterByDateTo }}</label>
               <input class="input" id="to" type="date" formControlName="to" />
             </div>
-          </div>
-          <div style="display: flex; gap: 0.75rem;">
-            <button type="submit" class="btn btn-primary">{{ msgs.applyFilters }}</button>
-            <button type="button" class="btn btn-secondary" (click)="clearFilters()">
-              {{ msgs.clearFilters }}
-            </button>
           </div>
         </form>
 
@@ -159,32 +156,40 @@ interface FilterValues {
               }
             </tbody>
           </table>
-
-          <div class="pms-paging">
-            <span>{{ format(totalLabel, { count: totalItems() }) }}</span>
-            <div class="pms-toolbar-spacer"></div>
-            <button
-              type="button"
-              class="btn btn-secondary"
-              (click)="prev()"
-              [disabled]="page() <= 1"
-            >
-              {{ msgs.pagePrevious }}
-            </button>
-            <span>{{ format(pageLabel, { page: page() }) }}</span>
-            <button
-              type="button"
-              class="btn btn-secondary"
-              (click)="next()"
-              [disabled]="page() * pageSize() >= totalItems()"
-            >
-              {{ msgs.pageNext }}
-            </button>
-          </div>
         }
 
         <p class="text-muted" style="margin-block-start: 1rem;">{{ msgs.cannotEditRecord }}</p>
       </div>
+
+      <!-- The filter actions and the paging ride in the pinned foot so both
+           ends of the screen's work — narrowing the log, walking it — stay
+           reachable while the table scrolls. The buttons are the same ones
+           the form used to carry, bound the same way; the foot's submit
+           reaches the form by its id. -->
+      <footer class="pms-view-foot">
+        <button type="submit" class="btn btn-primary" form="pms-records-filters">
+          {{ msgs.applyFilters }}
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="clearFilters()">
+          {{ msgs.clearFilters }}
+        </button>
+        @if (!loading() && items().length > 0) {
+          <div class="pms-toolbar-spacer"></div>
+          <span>{{ format(totalLabel, { count: totalItems() }) }}</span>
+          <button type="button" class="btn btn-secondary" (click)="prev()" [disabled]="page() <= 1">
+            {{ msgs.pagePrevious }}
+          </button>
+          <span>{{ format(pageLabel, { page: page() }) }}</span>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="next()"
+            [disabled]="page() * pageSize() >= totalItems()"
+          >
+            {{ msgs.pageNext }}
+          </button>
+        }
+      </footer>
     </section>
 
     @if (confirmUndo(); as r) {

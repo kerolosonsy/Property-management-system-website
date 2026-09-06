@@ -20,7 +20,14 @@ import { CloseOnEscapeDirective } from '../../shared/close-on-escape.directive';
 @Component({
   selector: 'app-property-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, AttachmentsPanelComponent, CloseOnEscapeDirective],
+  imports: [
+    CommonModule,
+    RouterLink,
+    FormsModule,
+    ReactiveFormsModule,
+    AttachmentsPanelComponent,
+    CloseOnEscapeDirective,
+  ],
   template: `
     <section class="pms-page">
       @if (errorMessage(); as msg) {
@@ -35,73 +42,94 @@ import { CloseOnEscapeDirective } from '../../shared/close-on-escape.directive';
           </div>
           <div class="pms-toolbar-spacer"></div>
           <a [routerLink]="['/properties']" class="btn btn-secondary">{{ msgs.backToList }}</a>
-          <a [routerLink]="['/properties', p.id, 'edit']" class="btn btn-primary">{{ msgs.editProperty }}</a>
+          <a [routerLink]="['/properties', p.id, 'edit']" class="btn btn-primary">{{
+            msgs.editProperty
+          }}</a>
           @if (!p.isArchived) {
-            <button type="button" class="btn btn-secondary" (click)="askArchive()">{{ msgs.archive }}</button>
+            <button type="button" class="btn btn-secondary" (click)="askArchive()">
+              {{ msgs.archive }}
+            </button>
           } @else {
-            <button type="button" class="btn btn-primary" (click)="askRestore()">{{ msgs.restore }}</button>
+            <button type="button" class="btn btn-primary" (click)="askRestore()">
+              {{ msgs.restore }}
+            </button>
           }
         </header>
 
-        <div class="card blueprint elev-sm">
-          <i class="corner tl"></i><i class="corner tr"></i>
-          <i class="corner bl"></i><i class="corner br"></i>
-          <h2>{{ msgs.propertyDetail }}</h2>
-          <dl class="pms-detail-grid">
-            <dt>{{ msgs.propertyCode }}</dt>
-            <dd class="pms-detail-code">
-              <span>{{ p.code }}</span>
-              @if (canEditCode()) {
-                <form (ngSubmit)="saveCode()" class="pms-inline-form">
-                  <input class="input" type="text" [formControl]="codeCtrl" name="code" />
-                  <button class="btn btn-secondary" type="submit" [disabled]="codeSaving()">
-                    {{ msgs.save }}
-                  </button>
-                </form>
-              }
-            </dd>
-            <dt>{{ msgs.propertyName }}</dt><dd>{{ p.name }}</dd>
-            <dt>{{ msgs.propertyType }}</dt><dd>{{ p.propertyType.label }}</dd>
-            <dt>{{ msgs.propertyArea }}</dt><dd>{{ p.area.label }}</dd>
-            @if (p.isArchived) {
-              <dt>{{ msgs.propertyArchivedAt }}</dt><dd>{{ formatDate(p.archivedAt) }}</dd>
-              <dt>{{ msgs.propertyArchivedBy_ }}</dt><dd>{{ p.archivedBy || '—' }}</dd>
-              @if (p.archiveNote) {
-                <dt>{{ msgs.propertyArchiveNoteLabel }}</dt><dd>{{ p.archiveNote }}</dd>
-              }
-            }
-          </dl>
-
-          @if (renderedValues().length > 0) {
-            <h3>{{ msgs.customFields }}</h3>
-            <dl class="pms-detail-grid">
-              @for (rv of renderedValues(); track rv.field.id) {
-                <dt>
-                  {{ rv.field.label }}
-                  @if (rv.isSensitive) {
-                    <span class="pms-pill pms-pill-warn">{{ msgs.customFieldSensitiveHint }}</span>
+        <!-- Wide screens set the summary beside the attachments so neither
+             pushes the other below the fold; narrow screens fall back to
+             the previous single column (styles.scss, .pms-detail-columns). -->
+        <div class="pms-detail-columns">
+          <div class="pms-detail-stack">
+            <div class="card blueprint elev-sm">
+              <i class="corner tl"></i><i class="corner tr"></i> <i class="corner bl"></i
+              ><i class="corner br"></i>
+              <h2>{{ msgs.propertyDetail }}</h2>
+              <dl class="pms-detail-grid">
+                <dt>{{ msgs.propertyCode }}</dt>
+                <dd class="pms-detail-code">
+                  <span>{{ p.code }}</span>
+                  @if (canEditCode()) {
+                    <form (ngSubmit)="saveCode()" class="pms-inline-form">
+                      <input class="input" type="text" [formControl]="codeCtrl" name="code" />
+                      <button class="btn btn-secondary" type="submit" [disabled]="codeSaving()">
+                        {{ msgs.save }}
+                      </button>
+                    </form>
                   }
-                </dt>
-                <dd>{{ rv.display }}</dd>
+                </dd>
+                <dt>{{ msgs.propertyName }}</dt>
+                <dd>{{ p.name }}</dd>
+                <dt>{{ msgs.propertyType }}</dt>
+                <dd>{{ p.propertyType.label }}</dd>
+                <dt>{{ msgs.propertyArea }}</dt>
+                <dd>{{ p.area.label }}</dd>
+                @if (p.isArchived) {
+                  <dt>{{ msgs.propertyArchivedAt }}</dt>
+                  <dd>{{ formatDate(p.archivedAt) }}</dd>
+                  <dt>{{ msgs.propertyArchivedBy_ }}</dt>
+                  <dd>{{ p.archivedBy || '—' }}</dd>
+                  @if (p.archiveNote) {
+                    <dt>{{ msgs.propertyArchiveNoteLabel }}</dt>
+                    <dd>{{ p.archiveNote }}</dd>
+                  }
+                }
+              </dl>
+
+              @if (renderedValues().length > 0) {
+                <h3>{{ msgs.customFields }}</h3>
+                <dl class="pms-detail-grid">
+                  @for (rv of renderedValues(); track rv.field.id) {
+                    <dt>
+                      {{ rv.field.label }}
+                      @if (rv.isSensitive) {
+                        <span class="pms-pill pms-pill-warn">{{
+                          msgs.customFieldSensitiveHint
+                        }}</span>
+                      }
+                    </dt>
+                    <dd>{{ rv.display }}</dd>
+                  }
+                </dl>
               }
-            </dl>
+            </div>
+
+            <div class="card blueprint elev-sm">
+              <i class="corner tl"></i><i class="corner tr"></i> <i class="corner bl"></i
+              ><i class="corner br"></i>
+              <h3>{{ msgs.propertyRecord }}</h3>
+              <dl class="pms-detail-grid">
+                <dt>{{ msgs.propertyCreated }}</dt>
+                <dd>{{ formatDate(p.createdAt) }} — {{ p.createdBy }}</dd>
+                <dt>{{ msgs.propertyLastModified }}</dt>
+                <dd>{{ formatDate(p.updatedAt) }} — {{ p.updatedBy }}</dd>
+              </dl>
+            </div>
+          </div>
+
+          @if (!p.isArchived) {
+            <app-attachments-panel [propertyId]="p.id"></app-attachments-panel>
           }
-        </div>
-
-        @if (!p.isArchived) {
-          <app-attachments-panel [propertyId]="p.id"></app-attachments-panel>
-        }
-
-        <div class="card blueprint elev-sm">
-          <i class="corner tl"></i><i class="corner tr"></i>
-          <i class="corner bl"></i><i class="corner br"></i>
-          <h3>{{ msgs.propertyRecord }}</h3>
-          <dl class="pms-detail-grid">
-            <dt>{{ msgs.propertyCreated }}</dt>
-            <dd>{{ formatDate(p.createdAt) }} — {{ p.createdBy }}</dd>
-            <dt>{{ msgs.propertyLastModified }}</dt>
-            <dd>{{ formatDate(p.updatedAt) }} — {{ p.updatedBy }}</dd>
-          </dl>
         </div>
       } @else if (!loading()) {
         <p class="pms-empty">{{ msgs.propertyNotFound }}</p>
@@ -115,16 +143,28 @@ import { CloseOnEscapeDirective } from '../../shared/close-on-escape.directive';
           <p>{{ format(msgs.propertyArchivedQ, { name: p.name }) }}</p>
           <div class="field pms-field">
             <label for="archiveNote">{{ msgs.propertyArchiveNoteLabel }}</label>
-            <textarea id="archiveNote" class="input" rows="3" [formControl]="archiveNoteCtrl"
-                      [placeholder]="msgs.propertyArchiveNotePlaceholder"
-                      [attr.aria-describedby]="archiveNoteError() ? 'archiveNoteError' : null"></textarea>
+            <textarea
+              id="archiveNote"
+              class="input"
+              rows="3"
+              [formControl]="archiveNoteCtrl"
+              [placeholder]="msgs.propertyArchiveNotePlaceholder"
+              [attr.aria-describedby]="archiveNoteError() ? 'archiveNoteError' : null"
+            ></textarea>
             @if (archiveNoteError(); as e) {
               <div id="archiveNoteError" class="pms-field-error">{{ e }}</div>
             }
           </div>
           <div class="pms-modal-actions">
-            <button type="button" class="btn btn-secondary" (click)="cancelArchive()">{{ msgs.cancel }}</button>
-            <button type="button" class="btn btn-primary" (click)="doArchive()" [disabled]="archiveSaving()">
+            <button type="button" class="btn btn-secondary" (click)="cancelArchive()">
+              {{ msgs.cancel }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              (click)="doArchive()"
+              [disabled]="archiveSaving()"
+            >
               {{ msgs.archive }}
             </button>
           </div>
@@ -141,8 +181,15 @@ import { CloseOnEscapeDirective } from '../../shared/close-on-escape.directive';
             <p>{{ msgs.propertyArchiveNotePrevious }}: {{ p.archiveNote }}</p>
           }
           <div class="pms-modal-actions">
-            <button type="button" class="btn btn-secondary" (click)="cancelRestore()">{{ msgs.cancel }}</button>
-            <button type="button" class="btn btn-primary" (click)="doRestore()" [disabled]="restoreSaving()">
+            <button type="button" class="btn btn-secondary" (click)="cancelRestore()">
+              {{ msgs.cancel }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              (click)="doRestore()"
+              [disabled]="restoreSaving()"
+            >
               {{ msgs.restore }}
             </button>
           </div>
@@ -150,9 +197,16 @@ import { CloseOnEscapeDirective } from '../../shared/close-on-escape.directive';
       </div>
     }
   `,
-  styles: [`
-    .pms-inline-form { display: inline-flex; gap: .5rem; align-items: center; margin-inline-start: .75rem; }
-  `],
+  styles: [
+    `
+      .pms-inline-form {
+        display: inline-flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin-inline-start: 0.75rem;
+      }
+    `,
+  ],
 })
 export class PropertyDetailComponent implements OnInit {
   protected readonly msgs = ARABIC_MESSAGES;
@@ -303,10 +357,13 @@ export class PropertyDetailComponent implements OnInit {
     if (!p) return;
     this.codeSaving.set(true);
     this.propertiesSvc
-      .changePropertyCode({
-        propertyId: p.id,
-        changePropertyCodeRequest: { code: this.codeCtrl.value, version: p.version },
-      }, 'body')
+      .changePropertyCode(
+        {
+          propertyId: p.id,
+          changePropertyCodeRequest: { code: this.codeCtrl.value, version: p.version },
+        },
+        'body',
+      )
       .subscribe({
         next: (updated) => {
           this.codeSaving.set(false);

@@ -4,7 +4,13 @@
 
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { PropertiesService } from '../../api/api/properties.service';
 import { LookupsService } from '../../api/api/lookups.service';
@@ -56,12 +62,14 @@ export type { CustomFieldType };
           }
         </div>
         <div class="pms-toolbar-spacer"></div>
-        <a [routerLink]="backLink()" class="btn btn-secondary">{{ msgs.cancel }}</a>
+        <!-- No cancel here: both form actions live in the pinned foot, which is
+             reachable from anywhere in the form. A second cancel in the head
+             would be the same control twice on one screen. -->
       </header>
 
-      <div class="card blueprint elev-sm" style="max-inline-size: 48rem; margin-inline: auto;">
-          <i class="corner tl"></i><i class="corner tr"></i>
-          <i class="corner bl"></i><i class="corner br"></i>
+      <div class="card blueprint elev-sm pms-form-card">
+        <i class="corner tl"></i><i class="corner tr"></i> <i class="corner bl"></i
+        ><i class="corner br"></i>
         @if (errorMessage(); as msg) {
           <div class="pms-error-banner">{{ msg }}</div>
         }
@@ -76,105 +84,153 @@ export type { CustomFieldType };
           </div>
         }
 
-        <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-          <div class="field pms-field">
-            <label for="name">{{ msgs.propertyName }}</label>
-            <input id="name" class="input" type="text" formControlName="name" appWesternDigits />
-            @if (form.controls.name.touched && form.controls.name.invalid) {
-              <div class="pms-field-error">
-                @if (form.controls.name.hasError('required')) { {{ msgs.requiredField }} }
-                @else { {{ msgs.propertyNameLength }} }
-              </div>
-            }
-            @if (fieldError('name'); as m) { <div class="pms-field-error">{{ m }}</div> }
-          </div>
-
-          <div class="field pms-field">
-            <label for="propertyTypeId">{{ msgs.propertyType }}</label>
-            <select id="propertyTypeId" class="input" formControlName="propertyTypeId">
-              <option [ngValue]="''" disabled>{{ msgs.requiredField }}</option>
-              @for (t of propertyTypes(); track t.id) {
-                <option [ngValue]="t.id">{{ t.label }}</option>
+        <form id="pms-property-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+          <div class="pms-form-grid">
+            <div class="field pms-field pms-form-grid-full">
+              <label for="name">{{ msgs.propertyName }}</label>
+              <input id="name" class="input" type="text" formControlName="name" appWesternDigits />
+              @if (form.controls.name.touched && form.controls.name.invalid) {
+                <div class="pms-field-error">
+                  @if (form.controls.name.hasError('required')) {
+                    {{ msgs.requiredField }}
+                  } @else {
+                    {{ msgs.propertyNameLength }}
+                  }
+                </div>
               }
-            </select>
-            @if (fieldError('propertyTypeId'); as m) { <div class="pms-field-error">{{ m }}</div> }
-          </div>
-
-          <div class="field pms-field">
-            <label for="areaId">{{ msgs.propertyArea }}</label>
-            <select id="areaId" class="input" formControlName="areaId">
-              <option [ngValue]="''" disabled>{{ msgs.requiredField }}</option>
-              @for (a of areas(); track a.id) {
-                <option [ngValue]="a.id">{{ a.label }}</option>
+              @if (fieldError('name'); as m) {
+                <div class="pms-field-error">{{ m }}</div>
               }
-            </select>
-            @if (fieldError('areaId'); as m) { <div class="pms-field-error">{{ m }}</div> }
-          </div>
-
-          @if (isAdmin()) {
-            <div class="field pms-field">
-              <label for="code">{{ msgs.propertyCode }}</label>
-              <input id="code" class="input" type="text" formControlName="code" appWesternDigits
-                     [placeholder]="msgs.propertyCode" />
-              @if (fieldError('code'); as m) { <div class="pms-field-error">{{ m }}</div> }
             </div>
-          }
 
-          @if (customStates().length > 0) {
-            <h3>{{ msgs.customFields }}</h3>
-            @for (cs of customStates(); track cs.field.id) {
+            <div class="field pms-field">
+              <label for="propertyTypeId">{{ msgs.propertyType }}</label>
+              <select id="propertyTypeId" class="input" formControlName="propertyTypeId">
+                <option [ngValue]="''" disabled>{{ msgs.requiredField }}</option>
+                @for (t of propertyTypes(); track t.id) {
+                  <option [ngValue]="t.id">{{ t.label }}</option>
+                }
+              </select>
+              @if (fieldError('propertyTypeId'); as m) {
+                <div class="pms-field-error">{{ m }}</div>
+              }
+            </div>
+
+            <div class="field pms-field">
+              <label for="areaId">{{ msgs.propertyArea }}</label>
+              <select id="areaId" class="input" formControlName="areaId">
+                <option [ngValue]="''" disabled>{{ msgs.requiredField }}</option>
+                @for (a of areas(); track a.id) {
+                  <option [ngValue]="a.id">{{ a.label }}</option>
+                }
+              </select>
+              @if (fieldError('areaId'); as m) {
+                <div class="pms-field-error">{{ m }}</div>
+              }
+            </div>
+
+            @if (isAdmin()) {
               <div class="field pms-field">
-                <label [attr.for]="'custom-' + cs.field.id">
-                  {{ cs.field.label }}
-                  @if (cs.field.isSensitive) {
-                    <span class="pms-pill pms-pill-warn">{{ msgs.customFieldSensitiveHint }}</span>
-                  }
-                </label>
-                @switch (cs.field.fieldType) {
-                  @case ('text') {
-                    <input class="input" [attr.id]="'custom-' + cs.field.id" type="text"
-                           [formControl]="cs.text" appWesternDigits />
-                  }
-                  @case ('checkbox') {
-                    <div class="pms-checkbox-row">
-                      <input [attr.id]="'custom-' + cs.field.id" type="checkbox"
-                             [formControl]="cs.checked" />
-                      <label [attr.for]="'custom-' + cs.field.id">{{ msgs.yes }}</label>
-                    </div>
-                  }
-                  @case ('dropdown') {
-                    <select class="input" [attr.id]="'custom-' + cs.field.id" [formControl]="cs.choice">
-                      <option [ngValue]="''">—</option>
-                      @for (ch of cs.field.choices; track ch.id) {
-                        <option [ngValue]="ch.id">{{ ch.label }}</option>
-                      }
-                    </select>
-                  }
-                  @case ('multiselect') {
-                    <div class="pms-multi-row">
-                      @for (ch of cs.field.choices; track ch.id) {
-                        <label class="pms-multi-option">
-                          <input type="checkbox"
-                                 [checked]="cs.choices.value.includes(ch.id)"
-                                 (change)="toggleMulti(cs, ch.id, $event)" />
-                          {{ ch.label }}
-                        </label>
-                      }
-                    </div>
-                  }
+                <label for="code">{{ msgs.propertyCode }}</label>
+                <input
+                  id="code"
+                  class="input"
+                  type="text"
+                  formControlName="code"
+                  appWesternDigits
+                  [placeholder]="msgs.propertyCode"
+                />
+                @if (fieldError('code'); as m) {
+                  <div class="pms-field-error">{{ m }}</div>
                 }
               </div>
             }
-          }
-
-          <div style="display: flex; gap: 0.75rem; margin-block-start: 1rem;">
-            <button type="submit" class="btn btn-primary" [disabled]="submitting() || form.invalid || versionMismatch() !== null">
-              {{ submitting() ? msgs.loading : (isEdit() ? msgs.save : msgs.create) }}
-            </button>
-            <a [routerLink]="backLink()" class="btn btn-secondary">{{ msgs.cancel }}</a>
           </div>
+
+          @if (customStates().length > 0) {
+            <h3>{{ msgs.customFields }}</h3>
+            <div class="pms-form-grid">
+              @for (cs of customStates(); track cs.field.id) {
+                <div
+                  class="field pms-field"
+                  [class.pms-form-grid-full]="cs.field.fieldType === 'multiselect'"
+                >
+                  <label [attr.for]="'custom-' + cs.field.id">
+                    {{ cs.field.label }}
+                    @if (cs.field.isSensitive) {
+                      <span class="pms-pill pms-pill-warn">{{
+                        msgs.customFieldSensitiveHint
+                      }}</span>
+                    }
+                  </label>
+                  @switch (cs.field.fieldType) {
+                    @case ('text') {
+                      <input
+                        class="input"
+                        [attr.id]="'custom-' + cs.field.id"
+                        type="text"
+                        [formControl]="cs.text"
+                        appWesternDigits
+                      />
+                    }
+                    @case ('checkbox') {
+                      <div class="pms-checkbox-row">
+                        <input
+                          [attr.id]="'custom-' + cs.field.id"
+                          type="checkbox"
+                          [formControl]="cs.checked"
+                        />
+                        <label [attr.for]="'custom-' + cs.field.id">{{ msgs.yes }}</label>
+                      </div>
+                    }
+                    @case ('dropdown') {
+                      <select
+                        class="input"
+                        [attr.id]="'custom-' + cs.field.id"
+                        [formControl]="cs.choice"
+                      >
+                        <option [ngValue]="''">—</option>
+                        @for (ch of cs.field.choices; track ch.id) {
+                          <option [ngValue]="ch.id">{{ ch.label }}</option>
+                        }
+                      </select>
+                    }
+                    @case ('multiselect') {
+                      <div class="pms-multi-row">
+                        @for (ch of cs.field.choices; track ch.id) {
+                          <label class="pms-multi-option">
+                            <input
+                              type="checkbox"
+                              [checked]="cs.choices.value.includes(ch.id)"
+                              (change)="toggleMulti(cs, ch.id, $event)"
+                            />
+                            {{ ch.label }}
+                          </label>
+                        }
+                      </div>
+                    }
+                  }
+                </div>
+              }
+            </div>
+          }
         </form>
       </div>
+
+      <!-- The action bar pins to the foot so حفظ / إلغاء stay reachable on a
+           form tall enough to scroll. Same buttons, same bindings; the
+           submit reaches the form by its id. -->
+      <footer class="pms-view-foot">
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="submitting() || form.invalid || versionMismatch() !== null"
+          form="pms-property-form"
+        >
+          {{ submitting() ? msgs.loading : isEdit() ? msgs.save : msgs.create }}
+        </button>
+        <a [routerLink]="backLink()" class="btn btn-secondary">{{ msgs.cancel }}</a>
+      </footer>
     </section>
   `,
 })
@@ -198,7 +254,11 @@ export class PropertyFormComponent implements OnInit {
   protected readonly customStates = signal<CustomFormState[]>([]);
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly versionMismatch = signal<{ name: string; propertyType: Lookup; area: Lookup } | null>(null);
+  protected readonly versionMismatch = signal<{
+    name: string;
+    propertyType: Lookup;
+    area: Lookup;
+  } | null>(null);
   private readonly fieldErrors = signal<Record<string, string>>({});
 
   protected readonly form = this.fb.nonNullable.group({
@@ -217,7 +277,8 @@ export class PropertyFormComponent implements OnInit {
   protected toggleMulti(cs: CustomFormState, id: string, ev: Event): void {
     const checked = (ev.target as HTMLInputElement).checked;
     const current = new Set(cs.choices.value);
-    if (checked) current.add(id); else current.delete(id);
+    if (checked) current.add(id);
+    else current.delete(id);
     cs.choices.setValue([...current]);
   }
 
@@ -255,20 +316,22 @@ export class PropertyFormComponent implements OnInit {
             code: p.code,
           });
           // Hydrate custom values from server response.
-          this.customStates.update((states) => states.map((cs) => {
-            const v = p.customValues.find((cv) => cv.fieldId === cs.field.id);
-            if (!v) return cs;
-            if (cs.field.fieldType === 'text') {
-              cs.text.setValue(v.text ?? '');
-            } else if (cs.field.fieldType === 'checkbox') {
-              cs.checked.setValue(v.checked ?? null);
-            } else if (cs.field.fieldType === 'dropdown') {
-              cs.choice.setValue(v.choiceId ?? '');
-            } else if (cs.field.fieldType === 'multiselect') {
-              cs.choices.setValue(v.choiceIds ?? []);
-            }
-            return cs;
-          }));
+          this.customStates.update((states) =>
+            states.map((cs) => {
+              const v = p.customValues.find((cv) => cv.fieldId === cs.field.id);
+              if (!v) return cs;
+              if (cs.field.fieldType === 'text') {
+                cs.text.setValue(v.text ?? '');
+              } else if (cs.field.fieldType === 'checkbox') {
+                cs.checked.setValue(v.checked ?? null);
+              } else if (cs.field.fieldType === 'dropdown') {
+                cs.choice.setValue(v.choiceId ?? '');
+              } else if (cs.field.fieldType === 'multiselect') {
+                cs.choices.setValue(v.choiceIds ?? []);
+              }
+              return cs;
+            }),
+          );
         },
         error: (err: ApiError) => {
           this.errorMessage.set(err.message || this.msgs.propertyNotFound);
@@ -301,33 +364,52 @@ export class PropertyFormComponent implements OnInit {
     const raw = this.form.getRawValue();
     const states = this.customStates();
     const customValues = states
-      .map((cs): { fieldId: string; text?: string | null; checked?: boolean | null; choiceId?: string | null; choiceIds?: string[] } | null => {
-        const out: { fieldId: string; text?: string | null; checked?: boolean | null; choiceId?: string | null; choiceIds?: string[] } = { fieldId: cs.field.id };
-        if (cs.field.fieldType === 'text') {
-          out.text = cs.text.value || null;
-        } else if (cs.field.fieldType === 'checkbox') {
-          out.checked = cs.checked.value;
-        } else if (cs.field.fieldType === 'dropdown') {
-          out.choiceId = cs.choice.value || null;
-        } else if (cs.field.fieldType === 'multiselect') {
-          out.choiceIds = cs.choices.value;
-        }
-        return out;
-      })
+      .map(
+        (
+          cs,
+        ): {
+          fieldId: string;
+          text?: string | null;
+          checked?: boolean | null;
+          choiceId?: string | null;
+          choiceIds?: string[];
+        } | null => {
+          const out: {
+            fieldId: string;
+            text?: string | null;
+            checked?: boolean | null;
+            choiceId?: string | null;
+            choiceIds?: string[];
+          } = { fieldId: cs.field.id };
+          if (cs.field.fieldType === 'text') {
+            out.text = cs.text.value || null;
+          } else if (cs.field.fieldType === 'checkbox') {
+            out.checked = cs.checked.value;
+          } else if (cs.field.fieldType === 'dropdown') {
+            out.choiceId = cs.choice.value || null;
+          } else if (cs.field.fieldType === 'multiselect') {
+            out.choiceIds = cs.choices.value;
+          }
+          return out;
+        },
+      )
       .filter((x): x is NonNullable<typeof x> => x !== null);
 
     if (this.isEdit()) {
       this.propertiesSvc
-        .updateProperty({
-          propertyId: this.propertyId()!,
-          propertyUpdate: {
-            name: raw.name,
-            propertyTypeId: raw.propertyTypeId,
-            areaId: raw.areaId,
-            version: this.version(),
-            customValues,
+        .updateProperty(
+          {
+            propertyId: this.propertyId()!,
+            propertyUpdate: {
+              name: raw.name,
+              propertyTypeId: raw.propertyTypeId,
+              areaId: raw.areaId,
+              version: this.version(),
+              customValues,
+            },
           },
-        }, 'body')
+          'body',
+        )
         .subscribe({
           next: () => {
             this.submitting.set(false);
@@ -336,7 +418,13 @@ export class PropertyFormComponent implements OnInit {
           error: (err: ApiError) => this.handleSubmitError(err),
         });
     } else {
-      const body: { name: string; propertyTypeId: string; areaId: string; code?: string; customValues?: typeof customValues } = {
+      const body: {
+        name: string;
+        propertyTypeId: string;
+        areaId: string;
+        code?: string;
+        customValues?: typeof customValues;
+      } = {
         name: raw.name,
         propertyTypeId: raw.propertyTypeId,
         areaId: raw.areaId,

@@ -18,25 +18,38 @@ type Entity = 'property-types' | 'areas';
 @Component({
   selector: 'app-lookup-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, WesternDigitsDirective, CloseOnEscapeDirective],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    WesternDigitsDirective,
+    CloseOnEscapeDirective,
+  ],
   template: `
     <div class="card blueprint elev-sm">
-          <i class="corner tl"></i><i class="corner tr"></i>
-          <i class="corner bl"></i><i class="corner br"></i>
-      <header class="pms-view-head">
-        <div>
-          <h2>{{ heading }}</h2>
-        </div>
-      </header>
+      <i class="corner tl"></i><i class="corner tr"></i> <i class="corner bl"></i
+      ><i class="corner br"></i>
+      <!-- A plain section heading, not a .pms-view-head: the panel is a
+           section of its screen (which supplies the pinned h1 above), and a
+           second pinned bar here would stack on the same offset and cover
+           it. -->
+      <h2>{{ heading }}</h2>
 
       <form (ngSubmit)="add()" class="pms-inline-form">
-        <input class="input" type="text" [formControl]="labelCtrl" appWesternDigits
-               [placeholder]="msgs.lookupLabel" />
+        <input
+          class="input"
+          type="text"
+          [formControl]="labelCtrl"
+          appWesternDigits
+          [placeholder]="msgs.lookupLabel"
+        />
         <button type="submit" class="btn btn-primary" [disabled]="labelCtrl.invalid || saving()">
           {{ saving() ? msgs.loading : msgs.lookupAdd }}
         </button>
       </form>
-      @if (fieldError(); as m) { <div class="pms-field-error">{{ m }}</div> }
+      @if (fieldError(); as m) {
+        <div class="pms-field-error">{{ m }}</div>
+      }
 
       @if (errorMessage(); as msg) {
         <div class="pms-error-banner">{{ msg }}</div>
@@ -64,11 +77,19 @@ type Entity = 'property-types' | 'areas';
                 </td>
                 <td>
                   @if (editingId() === it.id) {
-                    <button type="button" class="btn btn-secondary" (click)="saveEdit(it)">{{ msgs.save }}</button>
-                    <button type="button" class="btn btn-secondary" (click)="cancelEdit()">{{ msgs.cancel }}</button>
+                    <button type="button" class="btn btn-secondary" (click)="saveEdit(it)">
+                      {{ msgs.save }}
+                    </button>
+                    <button type="button" class="btn btn-secondary" (click)="cancelEdit()">
+                      {{ msgs.cancel }}
+                    </button>
                   } @else {
-                    <button type="button" class="btn btn-secondary" (click)="startEdit(it)">{{ msgs.lookupRename }}</button>
-                    <button type="button" class="btn btn-secondary" (click)="askRemove(it)">{{ msgs.lookupRemove }}</button>
+                    <button type="button" class="btn btn-secondary" (click)="startEdit(it)">
+                      {{ msgs.lookupRename }}
+                    </button>
+                    <button type="button" class="btn btn-secondary" (click)="askRemove(it)">
+                      {{ msgs.lookupRemove }}
+                    </button>
                   }
                 </td>
               </tr>
@@ -84,8 +105,15 @@ type Entity = 'property-types' | 'areas';
           <h2>{{ msgs.lookupRemove }}</h2>
           <p>{{ format(msgs.lookupConfirmRemove, { name: it.label }) }}</p>
           <div class="pms-modal-actions">
-            <button type="button" class="btn btn-secondary" (click)="cancelRemove()">{{ msgs.cancel }}</button>
-            <button type="button" class="btn btn-primary" (click)="doRemove(it)" [disabled]="removing()">
+            <button type="button" class="btn btn-secondary" (click)="cancelRemove()">
+              {{ msgs.cancel }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              (click)="doRemove(it)"
+              [disabled]="removing()"
+            >
               {{ msgs.lookupRemove }}
             </button>
           </div>
@@ -93,9 +121,16 @@ type Entity = 'property-types' | 'areas';
       </div>
     }
   `,
-  styles: [`
-    .pms-inline-form { display: flex; gap: .5rem; align-items: flex-end; margin-block-end: 1rem; }
-  `],
+  styles: [
+    `
+      .pms-inline-form {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+        margin-block-end: 1rem;
+      }
+    `,
+  ],
 })
 export class LookupPanelComponent implements OnInit {
   @Input({ required: true }) entity!: Entity;
@@ -114,15 +149,24 @@ export class LookupPanelComponent implements OnInit {
   protected readonly editingId = signal<string | null>(null);
   protected readonly confirmRemove = signal<Lookup | null>(null);
 
-  protected readonly labelCtrl = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(60)] });
-  protected readonly editCtrl = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(60)] });
+  protected readonly labelCtrl = new FormControl('', {
+    nonNullable: true,
+    validators: [Validators.required, Validators.maxLength(60)],
+  });
+  protected readonly editCtrl = new FormControl('', {
+    nonNullable: true,
+    validators: [Validators.required, Validators.maxLength(60)],
+  });
 
   ngOnInit(): void {
     this.refresh();
   }
 
   private refresh(): void {
-    const list$ = this.entity === 'property-types' ? this.lookups.listPropertyTypes('body') : this.lookups.listAreas('body');
+    const list$ =
+      this.entity === 'property-types'
+        ? this.lookups.listPropertyTypes('body')
+        : this.lookups.listAreas('body');
     list$.subscribe({
       next: (items) => this.items.set(items),
       error: () => this.items.set([]),
@@ -138,9 +182,10 @@ export class LookupPanelComponent implements OnInit {
     this.errorMessage.set(null);
     this.fieldError.set(null);
     const label = this.labelCtrl.value.trim();
-    const obs = this.entity === 'property-types'
-      ? this.lookups.createPropertyType({ lookupWrite: { label } }, 'body')
-      : this.lookups.createArea({ lookupWrite: { label } }, 'body');
+    const obs =
+      this.entity === 'property-types'
+        ? this.lookups.createPropertyType({ lookupWrite: { label } }, 'body')
+        : this.lookups.createArea({ lookupWrite: { label } }, 'body');
     obs.subscribe({
       next: () => {
         this.saving.set(false);
@@ -170,9 +215,10 @@ export class LookupPanelComponent implements OnInit {
   protected saveEdit(it: Lookup): void {
     if (this.editCtrl.invalid) return;
     const label = this.editCtrl.value.trim();
-    const obs = this.entity === 'property-types'
-      ? this.lookups.renamePropertyType({ lookupId: it.id, lookupWrite: { label } }, 'body')
-      : this.lookups.renameArea({ lookupId: it.id, lookupWrite: { label } }, 'body');
+    const obs =
+      this.entity === 'property-types'
+        ? this.lookups.renamePropertyType({ lookupId: it.id, lookupWrite: { label } }, 'body')
+        : this.lookups.renameArea({ lookupId: it.id, lookupWrite: { label } }, 'body');
     obs.subscribe({
       next: () => {
         this.editingId.set(null);
@@ -194,9 +240,10 @@ export class LookupPanelComponent implements OnInit {
 
   protected doRemove(it: Lookup): void {
     this.removing.set(true);
-    const obs = this.entity === 'property-types'
-      ? this.lookups.deletePropertyType({ lookupId: it.id }, 'body')
-      : this.lookups.deleteArea({ lookupId: it.id }, 'body');
+    const obs =
+      this.entity === 'property-types'
+        ? this.lookups.deletePropertyType({ lookupId: it.id }, 'body')
+        : this.lookups.deleteArea({ lookupId: it.id }, 'body');
     obs.subscribe({
       next: () => {
         this.removing.set(false);

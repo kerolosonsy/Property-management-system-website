@@ -19,55 +19,65 @@ import { SessionService } from '../../../core/session.service';
   imports: [CommonModule, ReactiveFormsModule, RouterLink, WesternDigitsDirective],
   template: `
     <section class="pms-page">
-      <div class="card" style="max-inline-size: 36rem; margin-inline: auto;">
-        <header style="display: flex; align-items: center; gap: 1rem;">
-          <h1 style="margin: 0; flex: 1;">{{ msgs.edit }}</h1>
-          <a routerLink="/settings/users">{{ msgs.backToList }}</a>
-        </header>
+      <header class="pms-view-head">
+        <div>
+          <h1>{{ msgs.userEditTitle }}</h1>
+          <div class="pms-crumb">{{ msgs.settings }} / {{ msgs.usersList }}</div>
+        </div>
+        <div class="pms-toolbar-spacer"></div>
+        <a routerLink="/settings/users" class="btn btn-secondary">{{ msgs.backToList }}</a>
+      </header>
 
-        @if (loading()) {
+      @if (loading()) {
+        <div class="card" style="max-inline-size: 48rem; margin-inline: auto;">
           <p class="text-muted">{{ msgs.loading }}</p>
-        } @else if (user(); as u) {
-          <form [formGroup]="form" (ngSubmit)="onSave()" novalidate>
-            <div class="field pms-field">
-              <label>{{ msgs.username }}</label>
-              <input class="input" type="text" [value]="u.username" disabled />
-            </div>
+        </div>
+      } @else if (user(); as u) {
+        <div class="card" style="max-inline-size: 48rem; margin-inline: auto;">
+          <form id="pms-user-edit-form" [formGroup]="form" (ngSubmit)="onSave()" novalidate>
+            <div class="pms-form-grid">
+              <div class="field pms-field">
+                <label>{{ msgs.username }}</label>
+                <input class="input" type="text" [value]="u.username" disabled />
+              </div>
 
-            <div class="field pms-field">
-              <label for="displayName">{{ msgs.displayName }}</label>
-              <input class="input" id="displayName" type="text" formControlName="displayName" appWesternDigits />
-              @if (fieldError('displayName'); as msg) {
-                <div class="pms-field-error">{{ msg }}</div>
-              }
-            </div>
+              <div class="field pms-field">
+                <label for="displayName">{{ msgs.displayName }}</label>
+                <input
+                  class="input"
+                  id="displayName"
+                  type="text"
+                  formControlName="displayName"
+                  appWesternDigits
+                />
+                @if (fieldError('displayName'); as msg) {
+                  <div class="pms-field-error">{{ msg }}</div>
+                }
+              </div>
 
-            <div class="field pms-field">
-              <label for="role">{{ msgs.role }}</label>
-              <select class="input" id="role" formControlName="role">
-                <option [ngValue]="'admin'">{{ msgs.roleAdmin }}</option>
-                <option [ngValue]="'manager'">{{ msgs.roleManager }}</option>
-              </select>
-              @if (fieldError('role'); as msg) {
-                <div class="pms-field-error">{{ msg }}</div>
-              }
-            </div>
+              <div class="field pms-field">
+                <label for="role">{{ msgs.role }}</label>
+                <select class="input" id="role" formControlName="role">
+                  <option [ngValue]="'admin'">{{ msgs.roleAdmin }}</option>
+                  <option [ngValue]="'manager'">{{ msgs.roleManager }}</option>
+                </select>
+                @if (fieldError('role'); as msg) {
+                  <div class="pms-field-error">{{ msg }}</div>
+                }
+              </div>
 
-            <div class="field pms-field" style="display: flex; flex-direction: row; align-items: center; gap: 0.5rem;">
-              <label for="isActive" style="margin: 0;">{{ msgs.active }}</label>
-              <input id="isActive" type="checkbox" formControlName="isActive" />
+              <div
+                class="field pms-field"
+                style="display: flex; flex-direction: row; align-items: center; gap: 0.5rem;"
+              >
+                <label for="isActive" style="margin: 0;">{{ msgs.active }}</label>
+                <input id="isActive" type="checkbox" formControlName="isActive" />
+              </div>
             </div>
 
             @if (errorMessage(); as msg) {
               <div class="pms-error-banner">{{ msg }}</div>
             }
-
-            <div style="display: flex; gap: 0.75rem;">
-              <button type="submit" class="btn btn-primary" [disabled]="submitting() || form.invalid">
-                {{ submitting() ? msgs.loading : msgs.save }}
-              </button>
-              <a routerLink="/settings/users" class="btn btn-secondary">{{ msgs.cancel }}</a>
-            </div>
           </form>
 
           <hr class="hr" style="margin-block: 2rem;" />
@@ -76,25 +86,56 @@ import { SessionService } from '../../../core/session.service';
           <form [formGroup]="resetForm" (ngSubmit)="onResetPassword()" novalidate>
             <div class="field pms-field">
               <label for="newPassword">{{ msgs.newPassword }}</label>
-              <input class="input" id="newPassword" type="password" formControlName="newPassword" autocomplete="new-password" />
-              @if (resetForm.controls.newPassword.touched && resetForm.controls.newPassword.invalid) {
+              <input
+                class="input"
+                id="newPassword"
+                type="password"
+                formControlName="newPassword"
+                autocomplete="new-password"
+              />
+              @if (
+                resetForm.controls.newPassword.touched && resetForm.controls.newPassword.invalid
+              ) {
                 <div class="pms-field-error">
-                  @if (resetForm.controls.newPassword.hasError('required')) { {{ msgs.requiredField }} }
-                  @else { {{ msgs.passwordTooShort }} }
+                  @if (resetForm.controls.newPassword.hasError('required')) {
+                    {{ msgs.requiredField }}
+                  } @else {
+                    {{ msgs.passwordTooShort }}
+                  }
                 </div>
               }
             </div>
             @if (resetMessage(); as msg) {
               <div class="pms-error-banner">{{ msg }}</div>
             }
-            <button type="submit" class="btn btn-primary" [disabled]="resetting() || resetForm.invalid">
+            <button
+              type="submit"
+              class="btn btn-primary"
+              [disabled]="resetting() || resetForm.invalid"
+            >
               {{ resetting() ? msgs.loading : msgs.resetPassword }}
             </button>
           </form>
-        } @else {
+        </div>
+
+        <!-- The account's own save/cancel pins to the foot; the secondary
+             reset-password form below keeps its inline button. -->
+        <footer class="pms-view-foot">
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="submitting() || form.invalid"
+            form="pms-user-edit-form"
+          >
+            {{ submitting() ? msgs.loading : msgs.save }}
+          </button>
+          <a routerLink="/settings/users" class="btn btn-secondary">{{ msgs.cancel }}</a>
+        </footer>
+      } @else {
+        <div class="card" style="max-inline-size: 48rem; margin-inline: auto;">
           <p>{{ msgs.noRecordsMatch }}</p>
-        }
-      </div>
+        </div>
+      }
     </section>
   `,
 })
@@ -158,28 +199,33 @@ export class UserEditComponent implements OnInit {
     this.fieldErrors.set({});
 
     const { displayName, role, isActive } = this.form.getRawValue();
-    this.users.updateUser({
-      userId: this.id!,
-      updateUserRequest: { displayName, role, isActive },
-    }, 'body').subscribe({
-      next: () => {
-        this.submitting.set(false);
-        void this.router.navigate(['/settings/users']);
-      },
-      error: (err: ApiError) => {
-        this.submitting.set(false);
-        if (err.code === 'conflict') {
-          this.errorMessage.set(err.message || this.msgs.lastAdmin);
-        } else if (err.code === 'forbidden') {
-          this.errorMessage.set(this.msgs.forbidden);
-        } else if (err.fields) {
-          this.fieldErrors.set(err.fields);
-          this.errorMessage.set(err.message);
-        } else {
-          this.errorMessage.set(err.message || this.msgs.internalError);
-        }
-      },
-    });
+    this.users
+      .updateUser(
+        {
+          userId: this.id!,
+          updateUserRequest: { displayName, role, isActive },
+        },
+        'body',
+      )
+      .subscribe({
+        next: () => {
+          this.submitting.set(false);
+          void this.router.navigate(['/settings/users']);
+        },
+        error: (err: ApiError) => {
+          this.submitting.set(false);
+          if (err.code === 'conflict') {
+            this.errorMessage.set(err.message || this.msgs.lastAdmin);
+          } else if (err.code === 'forbidden') {
+            this.errorMessage.set(this.msgs.forbidden);
+          } else if (err.fields) {
+            this.fieldErrors.set(err.fields);
+            this.errorMessage.set(err.message);
+          } else {
+            this.errorMessage.set(err.message || this.msgs.internalError);
+          }
+        },
+      });
   }
 
   protected onResetPassword(): void {
@@ -187,19 +233,24 @@ export class UserEditComponent implements OnInit {
     this.resetting.set(true);
     this.resetMessage.set(null);
     const { newPassword } = this.resetForm.getRawValue();
-    this.users.resetUserPassword({
-      userId: this.id!,
-      resetUserPasswordRequest: { newPassword },
-    }, 'response').subscribe({
-      next: () => {
-        this.resetting.set(false);
-        this.resetForm.reset({ newPassword: '' });
-        this.resetMessage.set(this.msgs.passwordChanged);
-      },
-      error: (err: ApiError) => {
-        this.resetting.set(false);
-        this.resetMessage.set(err.message || this.msgs.internalError);
-      },
-    });
+    this.users
+      .resetUserPassword(
+        {
+          userId: this.id!,
+          resetUserPasswordRequest: { newPassword },
+        },
+        'response',
+      )
+      .subscribe({
+        next: () => {
+          this.resetting.set(false);
+          this.resetForm.reset({ newPassword: '' });
+          this.resetMessage.set(this.msgs.passwordChanged);
+        },
+        error: (err: ApiError) => {
+          this.resetting.set(false);
+          this.resetMessage.set(err.message || this.msgs.internalError);
+        },
+      });
   }
 }
