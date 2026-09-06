@@ -136,6 +136,23 @@ func (s *Server) SearchProperties(w http.ResponseWriter, r *http.Request) {
 	s.handleSearchProperties().ServeHTTP(w, r)
 }
 
+// The generated layer has already parsed and format-checked the query
+// parameters by the time this runs; the strings are unpacked here and the
+// exactly-one-of validation stays with the store, like every other filter.
+func (s *Server) GetFieldSuggestions(w http.ResponseWriter, r *http.Request, params gen.GetFieldSuggestionsParams) {
+	field, fieldID, q := "", "", ""
+	if params.Field != nil {
+		field = string(*params.Field)
+	}
+	if params.FieldId != nil {
+		fieldID = params.FieldId.String()
+	}
+	if params.Q != nil {
+		q = *params.Q
+	}
+	s.handleFieldSuggestions(field, fieldID, q).ServeHTTP(w, r)
+}
+
 // Attachments — feature 003-property-attachments-ocr. Each method dispatches
 // to the concrete handler that lives in attachment_handlers.go or
 // attachment_content_handler.go; the wiring exists here so that *Server

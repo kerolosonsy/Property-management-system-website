@@ -19,6 +19,8 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 // @ts-ignore
 import { AdvancedSearch } from '../model/advanced-search.model';
 // @ts-ignore
+import { FieldSuggestions } from '../model/field-suggestions.model';
+// @ts-ignore
 import { PropertyPage } from '../model/property-page.model';
 
 // @ts-ignore
@@ -26,6 +28,12 @@ import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables'
 import { Configuration }                                     from '../configuration';
 import { BaseService } from '../api.base.service';
 
+
+export interface GetFieldSuggestionsRequestParams {
+    field?: 'code' | 'name' | 'propertyType' | 'area' | 'attachmentName';
+    fieldId?: string;
+    q?: string;
+}
 
 export interface SearchPropertiesRequestParams {
     advancedSearch: AdvancedSearch;
@@ -39,6 +47,95 @@ export class SearchService extends BaseService {
 
     constructor(protected httpClient: HttpClient, @Optional() @Inject(BASE_PATH) basePath: string|string[], @Optional() configuration?: Configuration) {
         super(basePath, configuration);
+    }
+
+    /**
+     * Type-ahead values for one search filter
+     * Returns at most 10 distinct values for a single filter, ordered by descending usage count then by label. &#x60;q&#x60; filters the candidates by substring after the same Arabic normalisation the rest of the app uses; an absent or empty &#x60;q&#x60; returns the most common values. Active and archived properties contribute alike — the register is one register.  Exactly one of &#x60;field&#x60; or &#x60;fieldId&#x60; must be present; zero or both is a 400. &#x60;fieldId&#x60; names a custom field. A sensitive field is refused with 400, exactly as /properties/search refuses one, and nothing is ever decrypted here: a suggestion must never be derived from an encrypted value, for any role (Constitution VII). A checkbox field holds nothing to suggest and is refused with 400; dropdown and multiselect fields suggest their defined choice labels.  &#x60;field&#x3D;attachmentName&#x60; suggests attachment descriptions — never extracted document text — and, like the &#x60;attachmentName&#x60; search filter, includes sensitive attachments, whose description is not sensitive.  This is a read: it writes no audit row. 
+     * @endpoint get /properties/field-suggestions
+     * @param requestParameters
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public getFieldSuggestions(requestParameters?: GetFieldSuggestionsRequestParams, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<FieldSuggestions>;
+    public getFieldSuggestions(requestParameters?: GetFieldSuggestionsRequestParams, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<FieldSuggestions>>;
+    public getFieldSuggestions(requestParameters?: GetFieldSuggestionsRequestParams, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<FieldSuggestions>>;
+    public getFieldSuggestions(requestParameters?: GetFieldSuggestionsRequestParams, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        const field = requestParameters?.field;
+        const fieldId = requestParameters?.fieldId;
+        const q = requestParameters?.q;
+
+        let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'field',
+            <any>field,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'fieldId',
+            <any>fieldId,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'q',
+            <any>q,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (sessionCookie) required
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/properties/field-suggestions`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<FieldSuggestions>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters.toHttpParams(),
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
     }
 
     /**

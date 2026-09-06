@@ -60,6 +60,9 @@ import { CloseOnEscapeDirective } from '../../../shared/close-on-escape.directiv
                 <select id="fieldType" class="input" formControlName="fieldType">
                   <option [ngValue]="''" disabled>—</option>
                   <option [ngValue]="'text'">{{ msgs.customFieldTypeText }}</option>
+                  <option [ngValue]="'autocomplete'">
+                    {{ msgs.customFieldTypeAutocomplete }}
+                  </option>
                   <option [ngValue]="'dropdown'">{{ msgs.customFieldTypeDropdown }}</option>
                   <option [ngValue]="'multiselect'">{{ msgs.customFieldTypeMultiselect }}</option>
                   <option [ngValue]="'checkbox'">{{ msgs.customFieldTypeCheckbox }}</option>
@@ -239,6 +242,9 @@ export class CustomFieldsComponent implements OnInit {
   protected sensitiveHint(): string | null {
     const type = this.form.controls.fieldType.value;
     const editing = this.editing();
+    if (type === 'autocomplete') {
+      return this.msgs.customFieldSensitiveAutocomplete;
+    }
     if (type !== 'text') {
       return this.msgs.customFieldSensitiveTextOnly;
     }
@@ -273,6 +279,8 @@ export class CustomFieldsComponent implements OnInit {
     switch (t) {
       case 'text':
         return this.msgs.customFieldTypeText;
+      case 'autocomplete':
+        return this.msgs.customFieldTypeAutocomplete;
       case 'dropdown':
         return this.msgs.customFieldTypeDropdown;
       case 'multiselect':

@@ -331,17 +331,22 @@ func (s *Store) ChangeCode(
 	id uuid.UUID, newCode, newNormalized string,
 	updatedBy uuid.UUID, expectedVersion int,
 ) (oldCode string, p *Property, err error) {
+	// The old code has to come from a self-join: RETURNING sees the row as
+	// updated, so `RETURNING code` would hand back the new code and the audit
+	// row would record the same value as before and after.
 	row := tx.QueryRow(ctx, `
-		UPDATE property
+		UPDATE property p
 		SET code = $2,
 		    code_normalized = $3,
-		    version = version + 1,
+		    version = p.version + 1,
 		    updated_at = now(),
 		    updated_by = $4
-		WHERE id = $1 AND version = $5 AND archived_at IS NULL
-		RETURNING code, id, name, property_type_id, area_id, version,
-		          created_at, updated_at, created_by, updated_by,
-		          archived_at, archived_by, archive_note`,
+		FROM property old
+		WHERE p.id = $1 AND old.id = $1
+		  AND p.version = $5 AND p.archived_at IS NULL
+		RETURNING old.code, p.id, p.name, p.property_type_id, p.area_id, p.version,
+		          p.created_at, p.updated_at, p.created_by, p.updated_by,
+		          p.archived_at, p.archived_by, p.archive_note`,
 		id, newCode, newNormalized, updatedBy, expectedVersion,
 	)
 	p = &Property{}

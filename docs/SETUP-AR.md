@@ -76,7 +76,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup.ps1 --db=docke
 وجد إصدارًا رئيسيًا آخر يتوقف ولا يحاول ترقيته أو إرجاعه إلى إصدار أقدم. على macOS يثبّت
 `postgresql@17` عبر Homebrew ويديره بواسطة `brew services`. وعلى Linux يستخدم مدير الحزم
 وخدمة النظام. ثم يضبط PostgreSQL ليستمع على `127.0.0.1:5432` فقط، وينشئ قاعدة `pms` ودور
-`pms_owner` المالك لها. على Windows يدير خدمة PostgreSQL 17 بعد إتمام التثبيت الرسمي.
+`pms_owner` المالك لها. وإذا كانت مستودعات Debian أو Ubuntu لا توفّر الإصدار 17 (أرشيف jammy
+يوفّر 14 و noble يوفّر 16) يضيف الأمر مستودع PostgreSQL الرسمي (PGDG) للإصدار المكتشف ثم يثبّت
+منه. على Windows يدير خدمة PostgreSQL 17 بعد إتمام التثبيت الرسمي.
 
 ---
 

@@ -44,6 +44,9 @@ function renderOne(f: CustomField, v: CustomFieldValue | undefined): RenderedVal
   }
   switch (f.fieldType) {
     case 'text':
+    case 'autocomplete':
+      // autocomplete is stored and read exactly like text; only its form
+      // control differs (it suggests values from the rest of the register).
       return {
         field: f,
         display: v.text ?? '—',
@@ -76,7 +79,7 @@ export function toWesternDigits(s: string): string {
   if (!s) return s;
   return s
     .replace(/[\u0660-\u0669]/g, (c) => String(c.charCodeAt(0) - 0x0660))
-    .replace(/[\u06F0-\u06F9]/g, (c) => String(c.charCodeAt(0) - 0x06F0));
+    .replace(/[\u06F0-\u06F9]/g, (c) => String(c.charCodeAt(0) - 0x06f0));
 }
 
 /** Convert a Date or ISO string to a Western-digit date string in Africa/Cairo. */

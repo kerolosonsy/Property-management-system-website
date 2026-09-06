@@ -60,7 +60,7 @@ func auditCustomValues(
 
 func publicAuditValue(storedValue properties.StoredValue) any {
 	switch storedValue.FieldType {
-	case properties.FieldText:
+	case properties.FieldText, properties.FieldAutocomplete:
 		if storedValue.Text != nil {
 			return *storedValue.Text
 		}

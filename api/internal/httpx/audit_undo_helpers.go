@@ -94,7 +94,7 @@ func customValueInputsFromAudit(ctx context.Context, cvRaw map[string]any, tx pg
 			IsSensitive: isSensitive,
 		}
 		switch properties.CustomFieldType(ft) {
-		case properties.FieldText:
+		case properties.FieldText, properties.FieldAutocomplete:
 			if value == nil {
 				continue
 			}

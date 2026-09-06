@@ -9,8 +9,12 @@
  */
 
 
+/**
+ * `autocomplete` is free text stored and validated exactly like `text`; the difference is advisory only — the client offers, via /properties/field-suggestions, values already entered for the same field on other properties. Suggestions never constrain what may be saved. An `autocomplete` field can never be sensitive. 
+ */
 export const CustomFieldType = {
     Text: 'text',
+    Autocomplete: 'autocomplete',
     Dropdown: 'dropdown',
     Multiselect: 'multiselect',
     Checkbox: 'checkbox',

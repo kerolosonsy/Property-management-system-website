@@ -48,8 +48,12 @@ Native mode requires PostgreSQL major version 17. On macOS setup installs
 `postgresql@17` with Homebrew and manages it with `brew services`. On supported
 Linux package managers it installs the version-17 server package, initializes
 the distribution's cluster when necessary, and enables and starts its systemd
-or OpenRC service. If another server major is installed or the reachable server
-is not version 17, setup stops instead of attempting an upgrade or downgrade.
+or OpenRC service. On Debian and Ubuntu, whose archives ship an older server
+(jammy 14, noble 16), setup adds the official PostgreSQL apt repository (PGDG)
+for the detected release, in the deb822 format documented on postgresql.org,
+and installs `postgresql-17` from it. If another server major is installed or
+the reachable server is not version 17, setup stops instead of attempting an
+upgrade or downgrade.
 
 The native server is configured to listen only on `127.0.0.1:5432`. Setup uses
 the current user's Homebrew socket access on macOS and `sudo -u postgres psql`

@@ -77,6 +77,27 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+apt_candidate() {
+    apt-cache policy "$1" 2>/dev/null | sed -n 's/^[[:space:]]*Candidate:[[:space:]]*//p' | sed -n '1p'
+}
+
+# True when the apt candidate for $1 is older than the required "$major.minor"
+# in $2. Used to stop before installing a distribution package setup would only
+# reject afterwards. Packages whose candidate is absent or unknown return 1 so
+# install_for proceeds and reports the real failure.
+apt_candidate_too_old() {
+    local package=$1 required=$2 candidate major minor required_major required_minor
+    candidate="$(apt_candidate "$package")"
+    [[ -n "$candidate" && "$candidate" != "(none)" ]] || return 1
+    candidate=${candidate#*:}
+    major=${candidate%%.*}
+    minor=${candidate#*.}
+    minor=${minor%%.*}
+    required_major=${required%%.*}
+    required_minor=${required#*.}
+    (( major < required_major || (major == required_major && minor < required_minor) ))
+}
+
 detect_package_manager() {
     local candidate_manager
     for candidate_manager in brew apt-get dnf pacman zypper apk; do
@@ -192,7 +213,7 @@ install_for() {
         poppler:apt-get|poppler:dnf|poppler:apk) install_packages poppler-utils ;;
         poppler:pacman|poppler:zypper) install_packages poppler ;;
         postgresql:brew) install_packages postgresql@17 ;;
-        postgresql:apt-get) install_packages postgresql-17 ;;
+        postgresql:apt-get) install_postgresql_apt ;;
         postgresql:dnf) install_packages postgresql17 postgresql17-server ;;
         postgresql:pacman) install_packages postgresql ;;
         postgresql:zypper) install_packages postgresql17 postgresql17-server ;;
@@ -222,6 +243,45 @@ install_for() {
         compose:apk) install_packages docker-cli-compose ;;
         *) fail "No package mapping exists for $dependency with $PACKAGE_MANAGER. Install $dependency manually, then rerun with --skip-deps." ;;
     esac
+}
+
+# The version-17 server is not in the Ubuntu archives (jammy ships 14, noble
+# ships 16), so a plain install would fail on every Ubuntu. When the archive
+# cannot offer PostgreSQL 17, add the official PostgreSQL apt repository (PGDG)
+# for this release exactly as documented on postgresql.org, then install from it.
+install_postgresql_apt() {
+    local candidate codename arch
+    if [[ "$APT_UPDATED" -eq 0 ]]; then
+        run_privileged apt-get update
+        APT_UPDATED=1
+    fi
+    candidate="$(apt_candidate postgresql-17)"
+    if [[ -n "$candidate" && "$candidate" != "(none)" ]]; then
+        install_packages postgresql-17
+        return
+    fi
+    codename="$(sed -n 's/^VERSION_CODENAME=//p' /etc/os-release 2>/dev/null | tr -d '"' | sed -n '1p')"
+    [[ -n "$codename" ]] || fail "The Debian or Ubuntu release codename could not be read from /etc/os-release. Install PostgreSQL 17 from the official PostgreSQL apt repository yourself, then rerun with --db=native --skip-deps."
+    case "$(uname -m)" in
+        x86_64) arch=amd64 ;;
+        aarch64|arm64) arch=arm64 ;;
+        *) fail "The PostgreSQL apt repository offers no packages for $(uname -m). Install PostgreSQL 17 for this architecture yourself, then rerun with --db=native --skip-deps." ;;
+    esac
+    printf 'PostgreSQL 17 is not in the %s archive; adding the official PostgreSQL apt repository (PGDG).\n' "$codename"
+    install_packages curl ca-certificates
+    run_privileged install -d -m 0755 /usr/share/postgresql-common/pgdg
+    # run_privileged stops the script on failure; --show-error keeps curl's own
+    # network diagnosis visible above the generic privileged-command message.
+    run_privileged curl --fail --silent --show-error --location \
+        --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+        https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    printf 'Types: deb deb-src\nURIs: https://apt.postgresql.org/pub/repos/apt\nSuites: %s-pgdg\nArchitectures: %s\nComponents: main\nSigned-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc\n' \
+        "$codename" "$arch" \
+        | run_privileged tee /etc/apt/sources.list.d/pgdg.sources >/dev/null
+    run_privileged apt-get update
+    candidate="$(apt_candidate postgresql-17)"
+    [[ -n "$candidate" && "$candidate" != "(none)" ]] || fail "PostgreSQL 17 is offered for neither the $codename archive nor its PostgreSQL apt repository. Install PostgreSQL 17 yourself, then rerun with --db=native --skip-deps."
+    install_packages postgresql-17
 }
 
 go_is_current() {
@@ -328,6 +388,9 @@ ensure_postgresql_installed() {
 
 ensure_dependencies() {
     if ! command_exists go || ! go_is_current; then
+        if [[ "$PACKAGE_MANAGER" == "apt-get" ]] && apt_candidate_too_old golang-go 1.27; then
+            fail "The apt candidate for golang-go is $(apt_candidate golang-go), older than the required Go 1.27. Install Go 1.27 or newer from https://go.dev/doc/install, ensure 'go' is on PATH, then rerun with --skip-deps."
+        fi
         install_for go
         refresh_brew_path
     fi
@@ -336,6 +399,9 @@ ensure_dependencies() {
     fi
 
     if ! command_exists node || ! command_exists npm || ! node_is_current; then
+        if [[ "$PACKAGE_MANAGER" == "apt-get" ]] && apt_candidate_too_old nodejs 22; then
+            fail "The apt candidate for nodejs is $(apt_candidate nodejs), older than the required Node.js 22. Install Node.js 22 or newer from https://nodejs.org/en/download, ensure 'node' and 'npm' are on PATH, then rerun with --skip-deps."
+        fi
         install_for node
         refresh_brew_path
     fi
@@ -416,7 +482,10 @@ ensure_docker_running() {
         fi
         sleep 1
     done
-    fail "Docker did not become ready within 60 seconds. Start Docker Desktop or the Docker service, verify 'docker info' succeeds, then rerun this command."
+    if [[ "$OS_NAME" == "Linux" ]]; then
+        fail "Docker did not become ready within 60 seconds. Verify 'docker info' succeeds for this account; if it fails with a socket permission error, add this account to the docker group with 'sudo usermod -aG docker $USER' and sign in again, or grant this account passwordless sudo for docker, then rerun this command."
+    fi
+    fail "Docker did not become ready within 60 seconds. Start Docker Desktop, verify 'docker info' succeeds, then rerun this command."
 }
 
 quote_env_value() {

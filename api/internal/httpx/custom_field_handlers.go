@@ -104,7 +104,7 @@ func (s *Server) handleCreateCustomField() http.Handler {
 		}
 		ft := properties.CustomFieldType(body.FieldType)
 		switch ft {
-		case properties.FieldText, properties.FieldDropdown, properties.FieldMultiselect, properties.FieldCheckbox:
+		case properties.FieldText, properties.FieldAutocomplete, properties.FieldDropdown, properties.FieldMultiselect, properties.FieldCheckbox:
 		default:
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
 				WithField("fieldType", MsgInvalidRequest))
@@ -125,8 +125,14 @@ func (s *Server) handleCreateCustomField() http.Handler {
 		if err != nil {
 			switch err {
 			case properties.ErrSensitiveTextOnly:
+				// The store refuses sensitivity for every non-text type; the
+				// Arabic message names the type the operator actually picked.
+				sensitiveMsg := MsgCustomFieldSensitiveTextOnly
+				if ft == properties.FieldAutocomplete {
+					sensitiveMsg = MsgCustomFieldSensitiveAutocomplete
+				}
 				WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
-					WithField("isSensitive", MsgCustomFieldSensitiveTextOnly))
+					WithField("isSensitive", sensitiveMsg))
 			case properties.ErrChoicesRequired:
 				WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
 					WithField("choices", MsgCustomFieldChoicesRequired))
