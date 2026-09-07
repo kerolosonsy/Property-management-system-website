@@ -29,6 +29,11 @@
 
 ### macOS و Linux
 
+على Linux استخدم حساب المستخدم العادي وشغّل `sudo -v` أولًا، ثم الأمر أدناه دون
+`sudo`. يلزم نظام يستخدم systemd. الإعداد يفعّل التشغيل مع إقلاع الجهاز والنسخ
+الاحتياطي يوميًا الساعة ٢ صباحًا بتوقيت القاهرة، مع الاحتفاظ بآخر ثلاث نسخ يومية
+ناجحة. راجع [إرشادات النسخ والاستعادة](LINUX-BACKUPS.md).
+
 ```bash
 bash scripts/setup.sh
 ```
@@ -164,7 +169,7 @@ Select-String -Path .env -Pattern PMS_ADMIN_PASSWORD
 ### الإيقاف
 
 ```bash
-# على macOS و Linux
+# على macOS فقط
 kill "$(cat ~/.local/state/pms/pms-api.pid)"
 ```
 
@@ -173,11 +178,21 @@ kill "$(cat ~/.local/state/pms/pms-api.pid)"
 Stop-Process -Id (Get-Content "$env:LOCALAPPDATA\pms\pms-api.pid")
 ```
 
+على Linux أوقف الجدولة والنسخ الجاري قبل إيقاف التطبيق:
+
+```bash
+systemctl --user stop pms-backup.timer pms-backup.service
+systemctl --user stop pms-api.service
+```
+
+لإعادة التشغيل استخدم `systemctl --user start pms-api.service pms-backup.timer`.
+
 ### مكان السجلات
 
 | النظام | المسار |
 | --- | --- |
-| macOS و Linux | `~/.local/state/pms/pms-api.log` |
+| macOS | `~/.local/state/pms/pms-api.log` |
+| Linux | `journalctl --user -u pms-api.service` |
 | Windows | `%LOCALAPPDATA%\pms\pms-api.stdout.log` و `pms-api.stderr.log` |
 
 ---
