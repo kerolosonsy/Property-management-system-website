@@ -792,14 +792,12 @@ ensure_native_owner_role() {
     local role_exists
     role_exists="$(native_psql -Atqc "SELECT 1 FROM pg_roles WHERE rolname = 'pms_owner'" 2>/dev/null)"
     if [[ -z "$role_exists" ]]; then
-        if [[ "$OWNER_PASSWORD_ACTION" == "keep" ]]; then
-            fail "PMS_DATABASE_OWNER_URL contains an operator-chosen password, but pms_owner does not exist. Create pms_owner as a LOGIN SUPERUSER with that password, then rerun; setup will not replace an operator-chosen credential."
-        fi
-        printf "CREATE ROLE pms_owner LOGIN SUPERUSER PASSWORD '%s';\n" "$OWNER_STARTUP_PASSWORD" | native_psql >/dev/null
+        printf 'CREATE ROLE pms_owner LOGIN SUPERUSER PASSWORD %s;\n' "$(sql_password_literal "$OWNER_STARTUP_PASSWORD")" \
+            | native_psql >/dev/null 2>&1 || fail "Could not create the database owner with the configured password."
     else
         printf '%s\n' 'ALTER ROLE pms_owner LOGIN SUPERUSER;' | native_psql >/dev/null
         if [[ "$OWNER_PASSWORD_ACTION" == "fresh" ]]; then
-            printf "ALTER ROLE pms_owner PASSWORD '%s';\n" "$OWNER_TARGET_PASSWORD" | native_psql >/dev/null
+            set_database_role_password pms_owner "$OWNER_TARGET_PASSWORD"
         fi
     fi
 }
@@ -848,6 +846,7 @@ run_migrations() {
     local attempt
     for ((attempt = 1; attempt <= 30; attempt++)); do
         if database_is_ready; then
+            ensure_application_role
             if ! (
                 cd "$ROOT/api"
                 unset PMS_KEK PMS_DATABASE_APP_URL PMS_ADMIN_PASSWORD DEV_ADMIN_PASSWORD
@@ -867,15 +866,33 @@ run_migrations() {
 
 database_super_psql() {
     if [[ "$DATABASE_MODE" == "docker" ]]; then
-        docker_compose exec -T postgres psql -X --username pms_owner --dbname postgres -v ON_ERROR_STOP=1
+        docker_compose exec -T postgres psql -X --username pms_owner --dbname postgres -v ON_ERROR_STOP=1 -At
     else
-        native_psql
+        native_psql -At
+    fi
+}
+
+# E-string quoting preserves quotes and backslashes regardless of server settings.
+sql_password_literal() {
+    local password=$1
+    password=${password//\\/\\\\}
+    password=${password//\'/\'\'}
+    printf "E'%s'" "$password"
+}
+
+ensure_application_role() {
+    local role_exists
+    role_exists="$(printf '%s\n' "SELECT 1 FROM pg_roles WHERE rolname = 'pms_app';" | database_super_psql)"
+    if [[ -z "$role_exists" ]]; then
+        printf 'CREATE ROLE pms_app LOGIN PASSWORD %s;\n' "$(sql_password_literal "$APP_TARGET_PASSWORD")" \
+            | database_super_psql >/dev/null 2>&1 || fail "Could not create the application database role with the configured password."
     fi
 }
 
 set_database_role_password() {
     local role=$1 password=$2
-    printf "ALTER ROLE %s PASSWORD '%s';\n" "$role" "$password" | database_super_psql >/dev/null
+    printf 'ALTER ROLE %s PASSWORD %s;\n' "$role" "$(sql_password_literal "$password")" \
+        | database_super_psql >/dev/null 2>&1 || fail "Could not set the configured password for $role."
 }
 
 converge_database_passwords() {

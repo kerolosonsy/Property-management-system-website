@@ -66,6 +66,17 @@ the current user's Homebrew socket access on macOS and `sudo -u postgres psql`
 on Linux to create the `pms` database, make `pms_owner` its owner, and keep
 `pms_owner` as a login superuser. Docker is not a native-mode prerequisite.
 
+On a new native database, Bash setup creates a missing `pms_owner` using the
+password already configured in `.env`. Before migrations, it also creates a missing
+`pms_app` with its configured password in either database mode. Existing roles keep
+their operator-managed passwords. Copying an existing `.env` onto a new machine
+therefore does not require manually creating these accounts or changing secrets.
+
+Verified on 2026-09-07 against disposable PostgreSQL 17: missing-role creation,
+TCP password authentication (including quotes and backslashes), application role
+without superuser privileges, unchanged password hashes on rerun, and application
+role creation before migrations. The target machine still needs a setup rerun.
+
 On Windows, an unattended official PostgreSQL install cannot safely supply and
 retain the required `postgres` bootstrap password without putting a secret in a
 process argument. If PostgreSQL 17 is absent, setup stops with the exact
