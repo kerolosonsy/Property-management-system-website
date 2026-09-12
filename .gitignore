@@ -1,6 +1,8 @@
 # Secrets, certificates, and environment files
 .env
 infra/certs/
+# Static-address state written by scripts/set-static-ip.sh
+infra/network/
 
 # Attachment store (feature 003-property-attachments-ocr). The path is
 # configured by PMS_ATTACHMENT_STORE and MUST be outside the repo working
