@@ -7,18 +7,21 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { PropertiesService } from '../../api/api/properties.service';
 import { LookupsService } from '../../api/api/lookups.service';
+import { SearchService } from '../../api/api/search.service';
 import { PropertySummary } from '../../api/model/property-summary.model';
 import { Lookup } from '../../api/model/lookup.model';
 import { ARABIC_MESSAGES, format } from '../../shared/messages';
 import { ApiError } from '../../core/api-error';
+import { AutocompleteInputComponent } from '../../shared/autocomplete-input.component';
 import { debounceTime } from 'rxjs/operators';
+import { map } from 'rxjs/operators';
 
 const PAGE_SIZES = [10, 25, 50, 100] as const;
 
 @Component({
   selector: 'app-properties-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, AutocompleteInputComponent],
   template: `
     <section class="pms-page">
       <header class="pms-view-head">
@@ -29,16 +32,16 @@ const PAGE_SIZES = [10, 25, 50, 100] as const;
         <div class="pms-toolbar-spacer"></div>
 
         <!-- The design joins the search field to the advanced-search button
-             into a single control group. -->
+             into a single control group. The header search spans name and
+             code; its suggestions come from the name column. -->
         <div class="pms-searchgroup">
           <div class="field">
-            <input
-              id="search"
-              class="input"
-              type="search"
+            <app-autocomplete-input
+              inputId="search"
               [formControl]="searchCtrl"
-              [attr.aria-label]="msgs.search"
+              [suggest]="suggestName"
               [placeholder]="msgs.searchPlaceholder"
+              [ariaLabel]="msgs.search"
             />
           </div>
           <a
@@ -116,49 +119,45 @@ const PAGE_SIZES = [10, 25, 50, 100] as const;
               </tr>
               <!-- Per-column filters, as the design source has them. Every
                    filter is applied by the server across the whole register,
-                   not to the visible page. -->
+                   not to the visible page. Text columns suggest previously
+                   stored values; the type and area comboboxes filter their
+                   already-loaded lookup lists in the browser. -->
               <tr class="pms-colfilter">
                 <th>
-                  <input
-                    class="input"
-                    type="search"
+                  <app-autocomplete-input
+                    inputId="colfilter-code"
                     [formControl]="codeCtrl"
-                    [attr.aria-label]="msgs.propertyCode"
+                    [suggest]="suggestCode"
                     [placeholder]="msgs.filterPlaceholder"
+                    [ariaLabel]="msgs.propertyCode"
                   />
                 </th>
                 <th>
-                  <input
-                    class="input"
-                    type="search"
+                  <app-autocomplete-input
+                    inputId="colfilter-name"
                     [formControl]="nameCtrl"
-                    [attr.aria-label]="msgs.propertyName"
+                    [suggest]="suggestName"
                     [placeholder]="msgs.filterPlaceholder"
+                    [ariaLabel]="msgs.propertyName"
                   />
                 </th>
                 <th>
-                  <select
-                    class="input"
+                  <app-autocomplete-input
+                    inputId="colfilter-type"
                     [formControl]="typeCtrl"
-                    [attr.aria-label]="msgs.propertyType"
-                  >
-                    <option [ngValue]="''">{{ msgs.allItems }}</option>
-                    @for (t of propertyTypes(); track t.id) {
-                      <option [ngValue]="t.id">{{ t.label }}</option>
-                    }
-                  </select>
+                    [options]="typeOptions()"
+                    [placeholder]="msgs.allItems"
+                    [ariaLabel]="msgs.propertyType"
+                  />
                 </th>
                 <th>
-                  <select
-                    class="input"
+                  <app-autocomplete-input
+                    inputId="colfilter-area"
                     [formControl]="areaCtrl"
-                    [attr.aria-label]="msgs.propertyArea"
-                  >
-                    <option [ngValue]="''">{{ msgs.allItems }}</option>
-                    @for (a of areas(); track a.id) {
-                      <option [ngValue]="a.id">{{ a.label }}</option>
-                    }
-                  </select>
+                    [options]="areaOptions()"
+                    [placeholder]="msgs.allItems"
+                    [ariaLabel]="msgs.propertyArea"
+                  />
                 </th>
                 <th></th>
               </tr>
@@ -250,6 +249,7 @@ export class PropertiesListComponent implements OnInit {
 
   private readonly propertiesSvc = inject(PropertiesService);
   private readonly lookupsSvc = inject(LookupsService);
+  private readonly searchSvc = inject(SearchService);
   private readonly router = inject(Router);
 
   protected readonly items = signal<PropertySummary[]>([]);
@@ -260,6 +260,27 @@ export class PropertiesListComponent implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly propertyTypes = signal<Lookup[]>([]);
   protected readonly areas = signal<Lookup[]>([]);
+
+  // The lookup comboboxes filter these in the browser; no request is made for
+  // them (the full lists are already loaded for the filter).
+  protected readonly typeOptions = computed(() =>
+    this.propertyTypes().map((t) => ({ value: t.id, label: t.label })),
+  );
+  protected readonly areaOptions = computed(() =>
+    this.areas().map((a) => ({ value: a.id, label: a.label })),
+  );
+
+  // Type-ahead sources: the header search suggests names, the code column
+  // suggests codes. Debounce and supersession live inside the shared
+  // autocomplete component; these functions only fetch.
+  protected readonly suggestName = (q: string) =>
+    this.searchSvc
+      .getFieldSuggestions({ field: 'name', q: q || undefined }, 'body')
+      .pipe(map((resp) => resp.suggestions));
+  protected readonly suggestCode = (q: string) =>
+    this.searchSvc
+      .getFieldSuggestions({ field: 'code', q: q || undefined }, 'body')
+      .pipe(map((resp) => resp.suggestions));
 
   protected readonly searchCtrl = new FormControl('', { nonNullable: true });
   protected readonly typeCtrl = new FormControl('', { nonNullable: true });
@@ -310,14 +331,15 @@ export class PropertiesListComponent implements OnInit {
         this.refresh();
       });
     }
-    this.typeCtrl.valueChanges.subscribe(() => {
-      this.page.set(1);
-      this.refresh();
-    });
-    this.areaCtrl.valueChanges.subscribe(() => {
-      this.page.set(1);
-      this.refresh();
-    });
+    // The lookup comboboxes now also emit while the user types (the selection
+    // is '' until an option is accepted), so they debounce like the text ones
+    // rather than refreshing per keystroke.
+    for (const ctrl of [this.typeCtrl, this.areaCtrl]) {
+      ctrl.valueChanges.pipe(debounceTime(250)).subscribe(() => {
+        this.page.set(1);
+        this.refresh();
+      });
+    }
     this.includeArchivedCtrl.valueChanges.subscribe(() => {
       this.page.set(1);
       this.refresh();

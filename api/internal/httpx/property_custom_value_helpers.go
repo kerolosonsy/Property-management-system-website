@@ -71,7 +71,7 @@ func buildCustomValueInputs(
 			IsSensitive: def.IsSensitive,
 		}
 		switch def.FieldType {
-		case properties.FieldText:
+		case properties.FieldText, properties.FieldAutocomplete:
 			if b.Text != nil {
 				s := *b.Text
 				if len([]rune(s)) > 1024 {

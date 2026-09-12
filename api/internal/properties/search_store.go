@@ -93,7 +93,7 @@ func (s *Store) BuildSearchInputs(ctx context.Context, tx pgx.Tx, in SearchInput
 func checkOperator(op Operator, t CustomFieldType) error {
 	switch op {
 	case OpContains:
-		if t != FieldText {
+		if t != FieldText && t != FieldAutocomplete {
 			return ErrOperatorMismatch
 		}
 	case OpEquals:

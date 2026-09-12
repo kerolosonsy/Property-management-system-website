@@ -77,9 +77,17 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+apt_candidate() {
+    apt-cache policy "$1" 2>/dev/null | sed -n 's/^[[:space:]]*Candidate:[[:space:]]*//p' | sed -n '1p'
+}
+
 detect_package_manager() {
     local candidate_manager
-    for candidate_manager in brew apt-get dnf pacman zypper apk; do
+    if [[ "$OS_NAME" == "macOS" ]]; then
+        command_exists brew && PACKAGE_MANAGER=brew
+        return 0
+    fi
+    for candidate_manager in apt-get dnf pacman zypper apk; do
         if command_exists "$candidate_manager"; then
             PACKAGE_MANAGER="$candidate_manager"
             return
@@ -127,9 +135,15 @@ run_privileged() {
 install_packages() {
     case "$PACKAGE_MANAGER" in
         brew)
-            if ! brew install "$@"; then
-                fail "Homebrew could not install $*. Run 'brew install $*', resolve the reported problem, then rerun this command."
-            fi
+            local package
+            for package in "$@"; do
+                if brew list --formula "$package" >/dev/null 2>&1; then
+                    brew upgrade "$package" || fail "Homebrew could not update $package."
+                else
+                    brew install "$package" || fail "Homebrew could not install $package."
+                fi
+            done
+            return
             ;;
         apt-get)
             if [[ "$APT_UPDATED" -eq 0 ]]; then
@@ -139,16 +153,17 @@ install_packages() {
             run_privileged env DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
             ;;
         dnf)
-            run_privileged dnf install -y "$@"
+            run_privileged dnf --refresh install -y "$@"
             ;;
         pacman)
             run_privileged pacman -S --needed --noconfirm "$@"
             ;;
         zypper)
+            run_privileged zypper --non-interactive refresh
             run_privileged zypper --non-interactive install "$@"
             ;;
         apk)
-            run_privileged apk add --no-interactive "$@"
+            run_privileged apk --update-cache add --upgrade --no-interactive "$@"
             ;;
         *)
             fail "No supported package manager was found. Install Homebrew, apt, dnf, pacman, zypper, or apk, then rerun this command."
@@ -163,13 +178,13 @@ install_for() {
     fi
     case "$dependency:$PACKAGE_MANAGER" in
         go:brew) install_packages go ;;
-        go:apt-get) install_packages golang-go ;;
+        go:apt-get) install_linux_runtime go ;;
         go:dnf) install_packages golang ;;
         go:pacman) install_packages go ;;
         go:zypper) install_packages go ;;
         go:apk) install_packages go ;;
         node:brew) install_packages node ;;
-        node:apt-get) install_packages nodejs npm ;;
+        node:apt-get) install_linux_runtime node ;;
         node:dnf) install_packages nodejs npm ;;
         node:pacman) install_packages nodejs npm ;;
         node:zypper) install_packages nodejs npm ;;
@@ -192,7 +207,7 @@ install_for() {
         poppler:apt-get|poppler:dnf|poppler:apk) install_packages poppler-utils ;;
         poppler:pacman|poppler:zypper) install_packages poppler ;;
         postgresql:brew) install_packages postgresql@17 ;;
-        postgresql:apt-get) install_packages postgresql-17 ;;
+        postgresql:apt-get) install_postgresql_apt ;;
         postgresql:dnf) install_packages postgresql17 postgresql17-server ;;
         postgresql:pacman) install_packages postgresql ;;
         postgresql:zypper) install_packages postgresql17 postgresql17-server ;;
@@ -224,6 +239,92 @@ install_for() {
     esac
 }
 
+# The version-17 server is not in the Ubuntu archives (jammy ships 14, noble
+# ships 16), so a plain install would fail on every Ubuntu. When the archive
+# cannot offer PostgreSQL 17, add the official PostgreSQL apt repository (PGDG)
+# for this release exactly as documented on postgresql.org, then install from it.
+install_postgresql_apt() {
+    local candidate codename arch package=${1:-postgresql-17}
+    if [[ "$APT_UPDATED" -eq 0 ]]; then
+        run_privileged apt-get update
+        APT_UPDATED=1
+    fi
+    candidate="$(apt_candidate "$package")"
+    if [[ -n "$candidate" && "$candidate" != "(none)" ]]; then
+        install_packages "$package"
+        return
+    fi
+    codename="$(sed -n 's/^VERSION_CODENAME=//p' /etc/os-release 2>/dev/null | tr -d '"' | sed -n '1p')"
+    [[ -n "$codename" ]] || fail "The Debian or Ubuntu release codename could not be read from /etc/os-release. Install PostgreSQL 17 from the official PostgreSQL apt repository yourself, then rerun with --db=native --skip-deps."
+    case "$(uname -m)" in
+        x86_64) arch=amd64 ;;
+        aarch64|arm64) arch=arm64 ;;
+        *) fail "The PostgreSQL apt repository offers no packages for $(uname -m). Install PostgreSQL 17 for this architecture yourself, then rerun with --db=native --skip-deps." ;;
+    esac
+    printf 'PostgreSQL 17 is not in the %s archive; adding the official PostgreSQL apt repository (PGDG).\n' "$codename"
+    install_packages curl ca-certificates
+    run_privileged install -d -m 0755 /usr/share/postgresql-common/pgdg
+    # run_privileged stops the script on failure; --show-error keeps curl's own
+    # network diagnosis visible above the generic privileged-command message.
+    run_privileged curl --fail --silent --show-error --location \
+        --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+        https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    printf 'Types: deb deb-src\nURIs: https://apt.postgresql.org/pub/repos/apt\nSuites: %s-pgdg\nArchitectures: %s\nComponents: main\nSigned-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc\n' \
+        "$codename" "$arch" \
+        | run_privileged tee /etc/apt/sources.list.d/pgdg.sources >/dev/null
+    run_privileged apt-get update
+    candidate="$(apt_candidate "$package")"
+    [[ -n "$candidate" && "$candidate" != "(none)" ]] || fail "PostgreSQL 17 is offered for neither the $codename archive nor its PostgreSQL apt repository. Install PostgreSQL 17 yourself, then rerun with --db=native --skip-deps."
+    install_packages "$package"
+}
+
+# Install into a fresh version directory: overlaying a Go tree can leave stale files.
+install_linux_runtime() (
+    local runtime=$1 arch manifest archive checksum url staging toolchains destination
+    install_packages curl ca-certificates python3 tar xz-utils
+    case "$(uname -m)" in
+        x86_64) arch=amd64 ;;
+        aarch64|arm64) arch=arm64 ;;
+        *) fail "Automatic runtime downloads support Linux x86_64 and arm64. Install Go and Node.js manually and use --skip-deps." ;;
+    esac
+    toolchains="${XDG_DATA_HOME:-$HOME/.local/share}/pms/toolchains"
+    mkdir -p "$toolchains"
+    staging="$(mktemp -d "$toolchains/.download.XXXXXX")"
+    trap 'rm -rf "$staging"' EXIT
+    if [[ "$runtime" == "go" ]]; then
+        curl -fsSL 'https://go.dev/dl/?mode=json' -o "$staging/releases.json"
+        manifest="$(python3 -c '
+import json, sys
+for release in json.load(open(sys.argv[1])):
+    if release["stable"] and release["version"].startswith("go1.27."):
+        for f in release["files"]:
+            if f["os"] == "linux" and f["arch"] == sys.argv[2] and f["kind"] == "archive":
+                print(f["filename"], f["sha256"])
+                sys.exit(0)
+sys.exit("No stable Go 1.27 download found")
+' "$staging/releases.json" "$arch")"
+        read -r archive checksum <<<"$manifest"
+        url="https://go.dev/dl/$archive"
+    else
+        [[ "$arch" != "amd64" ]] || arch=x64
+        curl -fsSL https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt -o "$staging/checksums"
+        manifest="$(awk -v suffix="-linux-$arch.tar.xz" 'index($2, suffix) && substr($2, length($2)-length(suffix)+1) == suffix {print $2, $1}' "$staging/checksums")"
+        read -r archive checksum <<<"$manifest"
+        url="https://nodejs.org/dist/latest-v24.x/$archive"
+    fi
+    [[ "$archive" =~ ^[a-zA-Z0-9._-]+$ && "$checksum" =~ ^[a-f0-9]{64}$ ]] || fail "Invalid $runtime download metadata."
+    destination="$toolchains/${archive%.tar.*}"
+    if [[ ! -d "$destination" ]]; then
+        curl -fsSL "$url" -o "$staging/$archive"
+        (cd "$staging" && printf '%s  %s\n' "$checksum" "$archive" | sha256sum --check --status) || fail "$runtime archive checksum mismatch."
+        mkdir "$staging/unpacked"
+        tar -xf "$staging/$archive" --strip-components=1 -C "$staging/unpacked"
+        mv "$staging/unpacked" "$destination"
+    fi
+    [[ ! -e "$toolchains/$runtime" || -L "$toolchains/$runtime" ]] || fail "$toolchains/$runtime must be a setup-managed symlink."
+    ln -sfn "$destination" "$toolchains/$runtime"
+)
+
 go_is_current() {
     local version major minor
     version="$(go version 2>/dev/null | sed -nE 's/.* go([0-9]+)\.([0-9]+).*/\1.\2/p')"
@@ -233,9 +334,11 @@ go_is_current() {
 }
 
 node_is_current() {
-    local major
-    major="$(node --version 2>/dev/null | sed -nE 's/^v([0-9]+).*/\1/p')"
-    [[ -n "$major" ]] && (( major >= 22 ))
+    node -e '
+        const [major, minor, patch] = process.versions.node.split(".").map(Number);
+        process.exit((major === 22 && (minor > 22 || (minor === 22 && patch >= 3))) ||
+            (major === 24 && minor >= 15) || major >= 26 ? 0 : 1);
+    ' 2>/dev/null
 }
 
 refresh_brew_path() {
@@ -316,7 +419,7 @@ ensure_postgresql_installed() {
     if [[ -n "$installed_major" && "$installed_major" != "17" ]]; then
         fail "PostgreSQL server major version $installed_major is installed; version 17 is required. Remove it or migrate it to PostgreSQL 17 yourself, then rerun. This installer will not upgrade or downgrade PostgreSQL."
     fi
-    if [[ -z "$installed_major" ]]; then
+    if [[ "$SKIP_DEPS" -eq 0 || -z "$installed_major" ]]; then
         [[ "$PACKAGE_MANAGER" != "pacman" ]] || ensure_pacman_offers_postgresql_17
         install_for postgresql
         refresh_postgresql_path
@@ -327,41 +430,33 @@ ensure_postgresql_installed() {
 }
 
 ensure_dependencies() {
-    if ! command_exists go || ! go_is_current; then
+    if [[ "$SKIP_DEPS" -eq 0 ]]; then
+        install_for node
         install_for go
         refresh_brew_path
     fi
-    if ! command_exists go || ! go_is_current; then
-        fail "Go 1.27 or newer is required. Install it from https://go.dev/doc/install, ensure 'go' is on PATH, then rerun with --skip-deps."
-    fi
+    command_exists go && go_is_current || fail "Go 1.27 or newer is required. Rerun without --skip-deps to install it."
+    command_exists node && command_exists npm && node_is_current || fail "Angular requires Node.js 22.22.3+, 24.15.0+, or 26+. Rerun without --skip-deps to install a supported version."
 
-    if ! command_exists node || ! command_exists npm || ! node_is_current; then
-        install_for node
-        refresh_brew_path
-    fi
-    if ! command_exists node || ! command_exists npm || ! node_is_current; then
-        fail "Node.js 22 or newer with npm is required. Install it from https://nodejs.org/en/download, ensure 'node' and 'npm' are on PATH, then rerun with --skip-deps."
-    fi
-
-    if ! openssl_is_suitable; then
+    if [[ "$SKIP_DEPS" -eq 0 ]] || ! openssl_is_suitable; then
         install_for openssl
         refresh_brew_path
     fi
     openssl_is_suitable || fail "OpenSSL with 'req -addext' support is required. Install OpenSSL 3, ensure 'openssl' is on PATH, then rerun with --skip-deps."
 
-    if ! command_exists tesseract; then
+    if [[ "$SKIP_DEPS" -eq 0 ]] || ! command_exists tesseract; then
         install_for tesseract
         refresh_brew_path
     fi
     command_exists tesseract || fail "Tesseract is required. Install it, ensure 'tesseract' is on PATH, then rerun with --skip-deps."
-    if ! tesseract_has_arabic; then
+    if [[ "$SKIP_DEPS" -eq 0 ]] || ! tesseract_has_arabic; then
         install_for ara
     fi
     if ! tesseract_has_arabic; then
         fail "Tesseract Arabic data is missing. Install the 'ara' trained data for your Tesseract installation, verify 'tesseract --list-langs' lists ara, then rerun with --skip-deps."
     fi
 
-    if ! command_exists pdftotext || ! command_exists pdftoppm || ! command_exists pdfinfo; then
+    if [[ "$SKIP_DEPS" -eq 0 ]] || ! command_exists pdftotext || ! command_exists pdftoppm || ! command_exists pdfinfo; then
         install_for poppler
         refresh_brew_path
     fi
@@ -372,12 +467,12 @@ ensure_dependencies() {
     if [[ "$DATABASE_MODE" == "native" ]]; then
         ensure_postgresql_installed
     else
-        if ! command_exists docker; then
+        if [[ "$SKIP_DEPS" -eq 0 ]] || ! command_exists docker; then
             install_for docker
             refresh_brew_path
         fi
         command_exists docker || fail "Docker was installed but is not on PATH. Restart the shell, then rerun this command."
-        if ! docker compose version >/dev/null 2>&1; then
+        if [[ "$SKIP_DEPS" -eq 0 ]] || ! docker compose version >/dev/null 2>&1; then
             install_for compose
             refresh_brew_path
         fi
@@ -416,7 +511,10 @@ ensure_docker_running() {
         fi
         sleep 1
     done
-    fail "Docker did not become ready within 60 seconds. Start Docker Desktop or the Docker service, verify 'docker info' succeeds, then rerun this command."
+    if [[ "$OS_NAME" == "Linux" ]]; then
+        fail "Docker did not become ready within 60 seconds. Verify 'docker info' succeeds for this account; if it fails with a socket permission error, add this account to the docker group with 'sudo usermod -aG docker $USER' and sign in again, or grant this account passwordless sudo for docker, then rerun this command."
+    fi
+    fail "Docker did not become ready within 60 seconds. Start Docker Desktop, verify 'docker info' succeeds, then rerun this command."
 }
 
 quote_env_value() {
@@ -426,8 +524,10 @@ quote_env_value() {
 }
 
 load_env() {
+    local previous_dir=$PWD
+    cd "$ROOT"
     unset PMS_KEK PMS_DATABASE_OWNER_URL PMS_DATABASE_APP_URL PMS_TLS_CERT_PATH PMS_TLS_KEY_PATH
-    unset PMS_LISTEN_ADDR PMS_ATTACHMENT_STORE PMS_ADMIN_PASSWORD PMS_WEB_DIST SEED_USERNAME
+    unset PMS_LISTEN_ADDR PMS_ATTACHMENT_STORE PMS_ADMIN_PASSWORD PMS_WEB_DIST PMS_BACKUP_DIR SEED_USERNAME
     set +u
     set -a
     # shellcheck disable=SC1090 -- the repository-root .env path is resolved at runtime.
@@ -438,6 +538,7 @@ load_env() {
     fi
     set +a
     set -u
+    cd "$previous_dir"
 }
 
 set_env_if_empty() {
@@ -691,14 +792,12 @@ ensure_native_owner_role() {
     local role_exists
     role_exists="$(native_psql -Atqc "SELECT 1 FROM pg_roles WHERE rolname = 'pms_owner'" 2>/dev/null)"
     if [[ -z "$role_exists" ]]; then
-        if [[ "$OWNER_PASSWORD_ACTION" == "keep" ]]; then
-            fail "PMS_DATABASE_OWNER_URL contains an operator-chosen password, but pms_owner does not exist. Create pms_owner as a LOGIN SUPERUSER with that password, then rerun; setup will not replace an operator-chosen credential."
-        fi
-        printf "CREATE ROLE pms_owner LOGIN SUPERUSER PASSWORD '%s';\n" "$OWNER_STARTUP_PASSWORD" | native_psql >/dev/null
+        printf 'CREATE ROLE pms_owner LOGIN SUPERUSER PASSWORD %s;\n' "$(sql_password_literal "$OWNER_STARTUP_PASSWORD")" \
+            | native_psql >/dev/null 2>&1 || fail "Could not create the database owner with the configured password."
     else
         printf '%s\n' 'ALTER ROLE pms_owner LOGIN SUPERUSER;' | native_psql >/dev/null
         if [[ "$OWNER_PASSWORD_ACTION" == "fresh" ]]; then
-            printf "ALTER ROLE pms_owner PASSWORD '%s';\n" "$OWNER_TARGET_PASSWORD" | native_psql >/dev/null
+            set_database_role_password pms_owner "$OWNER_TARGET_PASSWORD"
         fi
     fi
 }
@@ -716,6 +815,9 @@ ensure_native_database() {
 
 start_database() {
     if [[ "$DATABASE_MODE" == "docker" ]]; then
+        if [[ "$SKIP_DEPS" -eq 0 ]]; then
+            docker_compose pull postgres || fail "Could not update the PostgreSQL 17 image."
+        fi
         docker_compose up -d || fail "PostgreSQL could not be started. Run 'docker compose --env-file \"$ENV_FILE\" -f \"$COMPOSE_FILE\" up -d', fix the reported problem, then rerun."
         if [[ "$OWNER_PASSWORD_ACTION" == "fresh" ]]; then
             set_database_role_password pms_owner "$OWNER_TARGET_PASSWORD"
@@ -744,6 +846,7 @@ run_migrations() {
     local attempt
     for ((attempt = 1; attempt <= 30; attempt++)); do
         if database_is_ready; then
+            ensure_application_role
             if ! (
                 cd "$ROOT/api"
                 unset PMS_KEK PMS_DATABASE_APP_URL PMS_ADMIN_PASSWORD DEV_ADMIN_PASSWORD
@@ -763,15 +866,33 @@ run_migrations() {
 
 database_super_psql() {
     if [[ "$DATABASE_MODE" == "docker" ]]; then
-        docker_compose exec -T postgres psql -X --username pms_owner --dbname postgres -v ON_ERROR_STOP=1
+        docker_compose exec -T postgres psql -X --username pms_owner --dbname postgres -v ON_ERROR_STOP=1 -At
     else
-        native_psql
+        native_psql -At
+    fi
+}
+
+# E-string quoting preserves quotes and backslashes regardless of server settings.
+sql_password_literal() {
+    local password=$1
+    password=${password//\\/\\\\}
+    password=${password//\'/\'\'}
+    printf "E'%s'" "$password"
+}
+
+ensure_application_role() {
+    local role_exists
+    role_exists="$(printf '%s\n' "SELECT 1 FROM pg_roles WHERE rolname = 'pms_app';" | database_super_psql)"
+    if [[ -z "$role_exists" ]]; then
+        printf 'CREATE ROLE pms_app LOGIN PASSWORD %s;\n' "$(sql_password_literal "$APP_TARGET_PASSWORD")" \
+            | database_super_psql >/dev/null 2>&1 || fail "Could not create the application database role with the configured password."
     fi
 }
 
 set_database_role_password() {
     local role=$1 password=$2
-    printf "ALTER ROLE %s PASSWORD '%s';\n" "$role" "$password" | database_super_psql >/dev/null
+    printf 'ALTER ROLE %s PASSWORD %s;\n' "$role" "$(sql_password_literal "$password")" \
+        | database_super_psql >/dev/null 2>&1 || fail "Could not set the configured password for $role."
 }
 
 converge_database_passwords() {
@@ -931,12 +1052,18 @@ start_application() {
     fail "The PMS server did not answer its health check within 60 seconds. Inspect $log_file, fix the reported problem, then rerun."
 }
 
+. "$SCRIPT_DIR/linux-services.sh"
+
 heading "Preflight"
 case "$(uname -s)" in
     Darwin) OS_NAME="macOS" ;;
     Linux) OS_NAME="Linux" ;;
     *) fail "This script supports macOS and Linux. On Windows, run scripts\\setup.ps1." ;;
 esac
+if [[ "$OS_NAME" == "Linux" ]]; then
+    [[ "$(id -u)" -ne 0 ]] || fail "Run setup as the app user, not root: sudo -v, then bash scripts/setup.sh."
+    command_exists systemctl && command_exists loginctl && [[ -d /run/systemd/system ]] || fail "Automatic startup and daily backups require systemd (for example Ubuntu or Debian)."
+fi
 HOST_NAME="$(hostname 2>/dev/null || true)"
 [[ "$HOST_NAME" =~ ^[A-Za-z0-9.-]+$ ]] || fail "The machine hostname cannot be placed in a TLS certificate. Set a hostname containing only letters, digits, dots, and hyphens, then rerun."
 detect_package_manager
@@ -945,12 +1072,16 @@ printf 'Detected: %s (%s); package manager: %s\n' "$OS_NAME" "$(uname -m)" "${PA
 select_database_mode
 
 heading "Dependencies"
+export PATH="${XDG_DATA_HOME:-$HOME/.local/share}/pms/toolchains/node/bin:${XDG_DATA_HOME:-$HOME/.local/share}/pms/toolchains/go/bin:$PATH"
 if [[ "$SKIP_DEPS" -eq 1 ]]; then
     printf 'Dependency installation skipped; verifying required tools.\n'
 fi
 ensure_dependencies
 if [[ "$DATABASE_MODE" == "docker" ]]; then
     ensure_docker_running
+fi
+if [[ "$OS_NAME" == "Linux" ]]; then
+    ensure_backup_tools
 fi
 printf 'All required dependencies are available.\n'
 
@@ -960,6 +1091,21 @@ printf 'Configuration is ready and existing values were preserved.\n'
 
 heading "TLS"
 ensure_tls
+
+if [[ "$OS_NAME" == "Linux" ]]; then
+    set_env_if_empty PMS_BACKUP_DIR "${XDG_DATA_HOME:-$HOME/.local/share}/pms/backups"
+    [[ "$PMS_BACKUP_DIR" == /* ]] || fail "PMS_BACKUP_DIR must be absolute."
+    backup_path="$(realpath -m "$PMS_BACKUP_DIR")"
+    for protected_path in "$ROOT" "$PMS_ATTACHMENT_STORE" "$PMS_WEB_DIST"; do
+        protected_path="$(realpath -m "$protected_path")"
+        case "$backup_path/" in "$protected_path/"*) fail "PMS_BACKUP_DIR overlaps application data." ;; esac
+        case "$protected_path/" in "$backup_path/"*) fail "PMS_BACKUP_DIR overlaps application data." ;; esac
+    done
+    mkdir -p "$PMS_BACKUP_DIR" "$HOME/.local/state/pms"
+    chmod 700 "$PMS_BACKUP_DIR" "$HOME/.local/state/pms"
+    exec 9>"$HOME/.local/state/pms/maintenance.lock"
+    flock -w 3600 9
+fi
 
 heading "Database"
 start_database
@@ -976,7 +1122,9 @@ build_application
 printf 'Production API and web bundle were built.\n'
 
 heading "Start"
-if [[ "$NO_START" -eq 1 ]]; then
+if [[ "$OS_NAME" == "Linux" ]]; then
+    install_linux_services
+elif [[ "$NO_START" -eq 1 ]]; then
     printf 'Server start skipped by --no-start.\n'
 else
     start_application

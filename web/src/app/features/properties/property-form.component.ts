@@ -15,6 +15,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { PropertiesService } from '../../api/api/properties.service';
 import { LookupsService } from '../../api/api/lookups.service';
 import { CustomFieldsService } from '../../api/api/custom-fields.service';
+import { SearchService } from '../../api/api/search.service';
 import { SessionService } from '../../core/session.service';
 import { CustomField } from '../../api/model/custom-field.model';
 import { CustomFieldType } from '../../api/model/custom-field-type.model';
@@ -22,6 +23,9 @@ import { Lookup } from '../../api/model/lookup.model';
 import { ARABIC_MESSAGES } from '../../shared/messages';
 import { ApiError } from '../../core/api-error';
 import { WesternDigitsDirective } from '../../shared/western-digits.directive';
+import { AutocompleteInputComponent } from '../../shared/autocomplete-input.component';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 interface CustomFormState {
   field: CustomField;
@@ -51,7 +55,13 @@ export type { CustomFieldType };
 @Component({
   selector: 'app-property-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, WesternDigitsDirective],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterLink,
+    WesternDigitsDirective,
+    AutocompleteInputComponent,
+  ],
   template: `
     <section class="pms-page">
       <header class="pms-view-head">
@@ -173,6 +183,18 @@ export type { CustomFieldType };
                         appWesternDigits
                       />
                     }
+                    @case ('autocomplete') {
+                      <!-- Suggestions come from the values other properties hold
+                           for this same field. A sensitive field is always of
+                           type text, so it can never render this control — no
+                           suggestion about it is ever requested. -->
+                      <app-autocomplete-input
+                        [inputId]="'custom-' + cs.field.id"
+                        [formControl]="cs.text"
+                        [suggest]="suggestCustomField(cs.field.id)"
+                        [ariaLabel]="cs.field.label"
+                      />
+                    }
                     @case ('checkbox') {
                       <div class="pms-checkbox-row">
                         <input
@@ -243,7 +265,23 @@ export class PropertyFormComponent implements OnInit {
   private readonly propertiesSvc = inject(PropertiesService);
   private readonly lookupsSvc = inject(LookupsService);
   private readonly customFieldsSvc = inject(CustomFieldsService);
+  private readonly searchSvc = inject(SearchService);
   private readonly session = inject(SessionService);
+
+  private readonly customSuggesters = new Map<string, (q: string) => Observable<string[]>>();
+
+  /** One cached suggester per custom field id: values other properties hold. */
+  protected suggestCustomField(fieldId: string): (q: string) => Observable<string[]> {
+    let fn = this.customSuggesters.get(fieldId);
+    if (!fn) {
+      fn = (q: string) =>
+        this.searchSvc
+          .getFieldSuggestions({ fieldId, q: q || undefined }, 'body')
+          .pipe(map((resp) => resp.suggestions));
+      this.customSuggesters.set(fieldId, fn);
+    }
+    return fn;
+  }
 
   protected readonly isEdit = signal(false);
   protected readonly propertyId = signal<string | null>(null);
@@ -320,7 +358,7 @@ export class PropertyFormComponent implements OnInit {
             states.map((cs) => {
               const v = p.customValues.find((cv) => cv.fieldId === cs.field.id);
               if (!v) return cs;
-              if (cs.field.fieldType === 'text') {
+              if (cs.field.fieldType === 'text' || cs.field.fieldType === 'autocomplete') {
                 cs.text.setValue(v.text ?? '');
               } else if (cs.field.fieldType === 'checkbox') {
                 cs.checked.setValue(v.checked ?? null);
@@ -381,7 +419,7 @@ export class PropertyFormComponent implements OnInit {
             choiceId?: string | null;
             choiceIds?: string[];
           } = { fieldId: cs.field.id };
-          if (cs.field.fieldType === 'text') {
+          if (cs.field.fieldType === 'text' || cs.field.fieldType === 'autocomplete') {
             out.text = cs.text.value || null;
           } else if (cs.field.fieldType === 'checkbox') {
             out.checked = cs.checked.value;

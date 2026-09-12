@@ -3,6 +3,12 @@
 An Arabic step-by-step version of the one-command procedure is in
 [`docs/SETUP-AR.md`](SETUP-AR.md) — دليل التشغيل بالعربية.
 
+Linux setup now enables boot startup and daily backups using systemd. See
+[Linux startup, backup retention and restoration](LINUX-BACKUPS.md). Run it as the
+regular app account after `sudo -v`, not with `sudo bash`. The generated units are
+**user** services (`systemctl --user`); the manual system service farther below is
+an alternative and must not run alongside them.
+
 ## One-command local and LAN server
 
 From a repository checkout, run the command for this machine:
@@ -48,13 +54,28 @@ Native mode requires PostgreSQL major version 17. On macOS setup installs
 `postgresql@17` with Homebrew and manages it with `brew services`. On supported
 Linux package managers it installs the version-17 server package, initializes
 the distribution's cluster when necessary, and enables and starts its systemd
-or OpenRC service. If another server major is installed or the reachable server
-is not version 17, setup stops instead of attempting an upgrade or downgrade.
+service. Automatic Linux setup requires systemd. On Debian and Ubuntu, whose archives ship an older server
+(jammy 14, noble 16), setup adds the official PostgreSQL apt repository (PGDG)
+for the detected release, in the deb822 format documented on postgresql.org,
+and installs `postgresql-17` from it. If another server major is installed or
+the reachable server is not version 17, setup stops instead of attempting an
+upgrade or downgrade.
 
 The native server is configured to listen only on `127.0.0.1:5432`. Setup uses
 the current user's Homebrew socket access on macOS and `sudo -u postgres psql`
 on Linux to create the `pms` database, make `pms_owner` its owner, and keep
 `pms_owner` as a login superuser. Docker is not a native-mode prerequisite.
+
+On a new native database, Bash setup creates a missing `pms_owner` using the
+password already configured in `.env`. Before migrations, it also creates a missing
+`pms_app` with its configured password in either database mode. Existing roles keep
+their operator-managed passwords. Copying an existing `.env` onto a new machine
+therefore does not require manually creating these accounts or changing secrets.
+
+Verified on 2026-09-07 against disposable PostgreSQL 17: missing-role creation,
+TCP password authentication (including quotes and backslashes), application role
+without superuser privileges, unchanged password hashes on rerun, and application
+role creation before migrations. The target machine still needs a setup rerun.
 
 On Windows, an unattended official PostgreSQL install cannot safely supply and
 retain the required `postgres` bootstrap password without putting a secret in a
@@ -81,7 +102,7 @@ warning. A second successful setup run therefore does not rotate either role.
 All other non-empty `.env` values retain the existing never-overwrite behavior;
 in particular, setup never replaces an existing `PMS_KEK`.
 
-The installer detects the host, installs missing supported packages, fills empty
+The Bash installer detects the host, installs or updates supported packages, fills empty
 `.env` values while preserving non-empty operator values, rotates only the two
 exact legacy database defaults described above, creates or reuses a self-signed
 certificate, starts PostgreSQL, applies migrations, creates or resets only the
@@ -90,13 +111,14 @@ certificate covers localhost, the hostname, and the primary LAN IPv4 address.
 The Go server serves the Angular bundle and API over the same HTTPS listener.
 The generated administrator password is stored only in `.env`; the installer
 never prints it. Preserve and back up `PMS_KEK` before doing any maintenance
-involving `.env`. If a distribution package cannot satisfy Go 1.27 or Node 22,
-setup stops and names the upstream installation step rather than accepting the
-old version.
+involving `.env`. On Debian/Ubuntu, the Bash installer downloads checksum-verified
+Go 1.27 and Node.js 24 archives from the upstream release sites. Other package
+manager paths validate their installed runtime versions after installation.
 
 The self-signed certificate is appropriate for a trusted local network after
 each client explicitly trusts it. It is not a public production certificate.
-Use `--no-start` when a service manager will own the process.
+On Linux, `--no-start` installs/enables the app service and backup timer for the
+next boot without starting them now. It does not stop existing running units.
 
 Verification status for this revision: the offline build and Bash syntax gates
 were exercised on macOS with Apple silicon. Neither installer was executed. The

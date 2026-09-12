@@ -29,6 +29,11 @@
 
 ### macOS و Linux
 
+على Linux استخدم حساب المستخدم العادي وشغّل `sudo -v` أولًا، ثم الأمر أدناه دون
+`sudo`. يلزم نظام يستخدم systemd. الإعداد يفعّل التشغيل مع إقلاع الجهاز والنسخ
+الاحتياطي يوميًا الساعة ٢ صباحًا بتوقيت القاهرة، مع الاحتفاظ بآخر ثلاث نسخ يومية
+ناجحة. راجع [إرشادات النسخ والاستعادة](LINUX-BACKUPS.md).
+
 ```bash
 bash scripts/setup.sh
 ```
@@ -76,7 +81,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup.ps1 --db=docke
 وجد إصدارًا رئيسيًا آخر يتوقف ولا يحاول ترقيته أو إرجاعه إلى إصدار أقدم. على macOS يثبّت
 `postgresql@17` عبر Homebrew ويديره بواسطة `brew services`. وعلى Linux يستخدم مدير الحزم
 وخدمة النظام. ثم يضبط PostgreSQL ليستمع على `127.0.0.1:5432` فقط، وينشئ قاعدة `pms` ودور
-`pms_owner` المالك لها. على Windows يدير خدمة PostgreSQL 17 بعد إتمام التثبيت الرسمي.
+`pms_owner` المالك لها. وإذا كانت مستودعات Debian أو Ubuntu لا توفّر الإصدار 17 (أرشيف jammy
+يوفّر 14 و noble يوفّر 16) يضيف الأمر مستودع PostgreSQL الرسمي (PGDG) للإصدار المكتشف ثم يثبّت
+منه. على Windows يدير خدمة PostgreSQL 17 بعد إتمام التثبيت الرسمي.
 
 ---
 
@@ -162,7 +169,7 @@ Select-String -Path .env -Pattern PMS_ADMIN_PASSWORD
 ### الإيقاف
 
 ```bash
-# على macOS و Linux
+# على macOS فقط
 kill "$(cat ~/.local/state/pms/pms-api.pid)"
 ```
 
@@ -171,11 +178,21 @@ kill "$(cat ~/.local/state/pms/pms-api.pid)"
 Stop-Process -Id (Get-Content "$env:LOCALAPPDATA\pms\pms-api.pid")
 ```
 
+على Linux أوقف الجدولة والنسخ الجاري قبل إيقاف التطبيق:
+
+```bash
+systemctl --user stop pms-backup.timer pms-backup.service
+systemctl --user stop pms-api.service
+```
+
+لإعادة التشغيل استخدم `systemctl --user start pms-api.service pms-backup.timer`.
+
 ### مكان السجلات
 
 | النظام | المسار |
 | --- | --- |
-| macOS و Linux | `~/.local/state/pms/pms-api.log` |
+| macOS | `~/.local/state/pms/pms-api.log` |
+| Linux | `journalctl --user -u pms-api.service` |
 | Windows | `%LOCALAPPDATA%\pms\pms-api.stdout.log` و `pms-api.stderr.log` |
 
 ---

@@ -101,7 +101,7 @@ func (s *Store) saveOne(
 		return nil
 	}
 	switch in.FieldType {
-	case FieldText:
+	case FieldText, FieldAutocomplete:
 		if in.Text == nil {
 			return nil
 		}

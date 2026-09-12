@@ -90,6 +90,9 @@ func (s *Server) Routes(genHandler http.Handler) http.Handler {
 	mux.Handle("POST /api/v1/properties", s.authed(anyRole, genHandler.ServeHTTP))
 	// Search must be registered before the {propertyId} pattern (research D-006).
 	mux.Handle("POST /api/v1/properties/search", s.authed(anyRole, genHandler.ServeHTTP))
+	// Type-ahead values for the search filters — another static segment that
+	// must win over the {propertyId} pattern.
+	mux.Handle("GET /api/v1/properties/field-suggestions", s.authed(anyRole, genHandler.ServeHTTP))
 	mux.Handle("GET /api/v1/properties/{propertyId}", s.authed(anyRole, genHandler.ServeHTTP))
 	mux.Handle("PUT /api/v1/properties/{propertyId}", s.authed(anyRole, genHandler.ServeHTTP))
 	mux.Handle("PATCH /api/v1/properties/{propertyId}/code", s.authed(adminRole, genHandler.ServeHTTP))

@@ -77,7 +77,7 @@ func customValuesResponse(values []properties.StoredValue, env *pmscrypto.Envelo
 			continue
 		}
 		switch v.FieldType {
-		case properties.FieldText:
+		case properties.FieldText, properties.FieldAutocomplete:
 			plain, _ := v.Decrypt(env)
 			entry["text"] = plain
 		case properties.FieldCheckbox:

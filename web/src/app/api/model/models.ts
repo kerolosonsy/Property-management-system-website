@@ -20,6 +20,7 @@ export * from './dashboard-counts.model';
 export * from './document-search-hit.model';
 export * from './document-search-page.model';
 export * from './extract-state.model';
+export * from './field-suggestions.model';
 export * from './get-health200-response.model';
 export * from './list-audit-records200-response.model';
 export * from './list-users200-response.model';

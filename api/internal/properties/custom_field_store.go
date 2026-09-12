@@ -17,10 +17,11 @@ import (
 type CustomFieldType string
 
 const (
-	FieldText       CustomFieldType = "text"
-	FieldDropdown   CustomFieldType = "dropdown"
-	FieldMultiselect CustomFieldType = "multiselect"
-	FieldCheckbox   CustomFieldType = "checkbox"
+	FieldText         CustomFieldType = "text"
+	FieldAutocomplete CustomFieldType = "autocomplete"
+	FieldDropdown     CustomFieldType = "dropdown"
+	FieldMultiselect  CustomFieldType = "multiselect"
+	FieldCheckbox     CustomFieldType = "checkbox"
 )
 
 // CustomFieldChoice is one option of a dropdown or multiselect field.
@@ -44,7 +45,9 @@ type CustomField struct {
 var ErrDuplicateLabel = errors.New("custom field label already in use")
 
 // ErrSensitiveTextOnly — a field marked sensitive must be of type text
-// (research.md D-009 / FR-027s1).
+// (research.md D-009 / FR-027s1). This also refuses `autocomplete`, which the
+// database constraint custom_field_sensitive_text_only_chk already keeps
+// non-sensitive at the schema level.
 var ErrSensitiveTextOnly = errors.New("sensitive is allowed only for text fields")
 
 // ErrChoicesRequired — a dropdown or multiselect field must arrive with at least

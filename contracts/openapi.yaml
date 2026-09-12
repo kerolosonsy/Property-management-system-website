@@ -637,6 +637,53 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Error' }
 
+  /properties/field-suggestions:
+    get:
+      tags: [search]
+      operationId: getFieldSuggestions
+      summary: Type-ahead values for one search filter
+      description: |
+        Returns at most 10 distinct values for a single filter, ordered by
+        descending usage count then by label. `q` filters the candidates by
+        substring after the same Arabic normalisation the rest of the app uses;
+        an absent or empty `q` returns the most common values. Active and
+        archived properties contribute alike — the register is one register.
+
+        Exactly one of `field` or `fieldId` must be present; zero or both is a
+        400. `fieldId` names a custom field. A sensitive field is refused with
+        400, exactly as /properties/search refuses one, and nothing is ever
+        decrypted here: a suggestion must never be derived from an encrypted
+        value, for any role (Constitution VII). A checkbox field holds nothing
+        to suggest and is refused with 400; dropdown and multiselect fields
+        suggest their defined choice labels.
+
+        `field=attachmentName` suggests attachment descriptions — never
+        extracted document text — and, like the `attachmentName` search filter,
+        includes sensitive attachments, whose description is not sensitive.
+
+        This is a read: it writes no audit row.
+      x-required-role: manager
+      parameters:
+        - name: field
+          in: query
+          schema:
+            type: string
+            enum: [code, name, propertyType, area, attachmentName]
+        - name: fieldId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 120 }
+      responses:
+        '200':
+          description: At most ten suggestion strings, most used first.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FieldSuggestions' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
   /properties/{propertyId}:
     parameters:
       - $ref: '#/components/parameters/PropertyId'
@@ -1616,7 +1663,13 @@ components:
 
     CustomFieldType:
       type: string
-      enum: [text, dropdown, multiselect, checkbox]
+      enum: [text, autocomplete, dropdown, multiselect, checkbox]
+      description: |
+        `autocomplete` is free text stored and validated exactly like `text`;
+        the difference is advisory only — the client offers, via
+        /properties/field-suggestions, values already entered for the same field
+        on other properties. Suggestions never constrain what may be saved. An
+        `autocomplete` field can never be sensitive.
 
     CustomFieldChoice:
       type: object
@@ -1835,6 +1888,19 @@ components:
         customFilters:
           type: array
           items: { $ref: '#/components/schemas/CustomFieldFilter' }
+
+    FieldSuggestions:
+      type: object
+      required: [suggestions]
+      description: |
+        Type-ahead values for one filter, most used first. Never derived from
+        an encrypted value; a sensitive field is refused before the query
+        (Constitution VII).
+      properties:
+        suggestions:
+          type: array
+          maxItems: 10
+          items: { type: string }
 
     ExtractState:
       type: string

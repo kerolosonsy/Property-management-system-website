@@ -18,6 +18,9 @@ import { ARABIC_MESSAGES, format } from '../../shared/messages';
 import { AdvancedSearch } from '../../api/model/advanced-search.model';
 import { ApiError } from '../../core/api-error';
 import { WesternDigitsDirective } from '../../shared/western-digits.directive';
+import { AutocompleteInputComponent } from '../../shared/autocomplete-input.component';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 interface CustomFilterState {
   field: CustomField;
@@ -30,7 +33,14 @@ interface CustomFilterState {
 @Component({
   selector: 'app-advanced-search',
   standalone: true,
-  imports: [FormsModule, CommonModule, ReactiveFormsModule, RouterLink, WesternDigitsDirective],
+  imports: [
+    FormsModule,
+    CommonModule,
+    ReactiveFormsModule,
+    RouterLink,
+    WesternDigitsDirective,
+    AutocompleteInputComponent,
+  ],
   template: `
     <section class="pms-page">
       <header class="pms-view-head">
@@ -64,32 +74,30 @@ interface CustomFilterState {
             <div class="pms-form-grid">
               <div class="field pms-field">
                 <label for="q">{{ msgs.search }}</label>
-                <input
-                  id="q"
-                  class="input"
-                  type="search"
+                <app-autocomplete-input
+                  inputId="q"
                   formControlName="q"
-                  appWesternDigits
+                  [suggest]="suggestName"
                   [placeholder]="msgs.searchPlaceholder"
                 />
               </div>
               <div class="field pms-field">
                 <label for="propertyTypeId">{{ msgs.propertyType }}</label>
-                <select id="propertyTypeId" class="input" formControlName="propertyTypeId">
-                  <option [ngValue]="''">{{ msgs.allItems }}</option>
-                  @for (t of propertyTypes(); track t.id) {
-                    <option [ngValue]="t.id">{{ t.label }}</option>
-                  }
-                </select>
+                <app-autocomplete-input
+                  inputId="propertyTypeId"
+                  formControlName="propertyTypeId"
+                  [options]="typeOptions()"
+                  [placeholder]="msgs.allItems"
+                />
               </div>
               <div class="field pms-field">
                 <label for="areaId">{{ msgs.propertyArea }}</label>
-                <select id="areaId" class="input" formControlName="areaId">
-                  <option [ngValue]="''">{{ msgs.allItems }}</option>
-                  @for (a of areas(); track a.id) {
-                    <option [ngValue]="a.id">{{ a.label }}</option>
-                  }
-                </select>
+                <app-autocomplete-input
+                  inputId="areaId"
+                  formControlName="areaId"
+                  [options]="areaOptions()"
+                  [placeholder]="msgs.allItems"
+                />
               </div>
               <div class="field pms-field">
                 <label for="documentText">{{ msgs.documentSearch }}</label>
@@ -105,12 +113,10 @@ interface CustomFilterState {
               </div>
               <div class="field pms-field">
                 <label for="attachmentName">{{ msgs.attachmentNameSearch }}</label>
-                <input
-                  id="attachmentName"
-                  class="input"
-                  type="search"
+                <app-autocomplete-input
+                  inputId="attachmentName"
                   formControlName="attachmentName"
-                  appWesternDigits
+                  [suggest]="suggestAttachmentName"
                   [placeholder]="msgs.attachmentNameSearch"
                 />
                 <div class="pms-note">{{ msgs.attachmentNameSearchHint }}</div>
@@ -146,6 +152,14 @@ interface CustomFilterState {
                           type="text"
                           [formControl]="fs.text"
                           appWesternDigits
+                        />
+                      }
+                      @case ('autocomplete') {
+                        <app-autocomplete-input
+                          [inputId]="'adv-' + fs.field.id"
+                          [formControl]="fs.text"
+                          [suggest]="suggestCustomField(fs.field.id)"
+                          [ariaLabel]="fs.field.label"
                         />
                       }
                       @case ('dropdown') {
@@ -287,6 +301,41 @@ export class AdvancedSearchComponent implements OnInit {
   protected readonly searching = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
+  // Type/area filter comboboxes narrow these already-loaded lists in the
+  // browser; they never call the suggestion endpoint.
+  protected readonly typeOptions = computed(() =>
+    this.propertyTypes().map((t) => ({ value: t.id, label: t.label })),
+  );
+  protected readonly areaOptions = computed(() =>
+    this.areas().map((a) => ({ value: a.id, label: a.label })),
+  );
+
+  // Type-ahead sources. Sensitive fields never reach filterStates at all
+  // (filtered out below), so no suggestion about them is ever requested.
+  protected readonly suggestName = (q: string) =>
+    this.searchSvc
+      .getFieldSuggestions({ field: 'name', q: q || undefined }, 'body')
+      .pipe(map((resp) => resp.suggestions));
+  protected readonly suggestAttachmentName = (q: string) =>
+    this.searchSvc
+      .getFieldSuggestions({ field: 'attachmentName', q: q || undefined }, 'body')
+      .pipe(map((resp) => resp.suggestions));
+
+  private readonly customSuggesters = new Map<string, (q: string) => Observable<string[]>>();
+
+  /** One cached suggester per custom field id, so template re-renders reuse it. */
+  protected suggestCustomField(fieldId: string): (q: string) => Observable<string[]> {
+    let fn = this.customSuggesters.get(fieldId);
+    if (!fn) {
+      fn = (q: string) =>
+        this.searchSvc
+          .getFieldSuggestions({ fieldId, q: q || undefined }, 'body')
+          .pipe(map((resp) => resp.suggestions));
+      this.customSuggesters.set(fieldId, fn);
+    }
+    return fn;
+  }
+
   // The filter block collapses so the results are reachable without
   // scrolling past a wall of inputs. Default open; nothing is remembered —
   // collapsing is a view convenience, not state.
@@ -380,6 +429,9 @@ export class AdvancedSearchComponent implements OnInit {
     for (const fs of this.filterStates()) {
       switch (fs.field.fieldType) {
         case 'text':
+        case 'autocomplete':
+          // autocomplete filters exactly like text: the contains operator on
+          // the stored value, which is the same column for both types.
           if (fs.text.value)
             customFilters.push({
               fieldId: fs.field.id,

@@ -40,6 +40,7 @@ model/dashboard-counts.model.ts
 model/document-search-hit.model.ts
 model/document-search-page.model.ts
 model/extract-state.model.ts
+model/field-suggestions.model.ts
 model/get-health200-response.model.ts
 model/list-audit-records200-response.model.ts
 model/list-users200-response.model.ts
