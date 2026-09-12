@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -10,7 +10,7 @@
 
 
 /**
- * Exactly two roles exist (FR-002).
+ * Exactly two roles exist.
  */
 export const Role = {
     Admin: 'admin',

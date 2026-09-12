@@ -1,39 +1,64 @@
 openapi: 3.1.0
 
 info:
-  title: Property Management System — Authentication and Accounts
+  title: Property Management System
   version: 1.0.0
   description: |
-    Source of truth for the boundary between the Angular application and the Go service
-    for feature 001-project-setup-login. The Go server interface and the Angular client
-    are both generated from this document; neither side hand-writes these types.
+    Source of truth for the boundary between the Angular application and the Go service.
+    The Go server interface and the Angular client are both generated from this document;
+    neither side hand-writes these types (Constitution III).
 
-    Authorization is decided on the server for every operation. `x-required-role`
-    states the requirement; an operation marked `admin` is refused for a manager
-    regardless of how the request is made (FR-004, FR-005).
+    Authorization is decided on the server for every operation. `x-required-role` states
+    the requirement; an operation marked `admin` is refused for a manager regardless of
+    how the request is made (Constitution I). Configuration — property types, areas,
+    custom field definitions, and changing a property's reference code — are `admin`.
+    Everything else is `manager`, which an administrator also satisfies.
 
-    Every response body uses Western Arabic digits. Messages shown to users are Arabic
-    (FR-027). All timestamps are RFC 3339 in UTC; the client renders them in
-    Africa/Cairo (FR-047).
+    Sensitive custom fields never appear in this document as a filterable field. The
+    server refuses a filter naming one even if a client constructs the request by hand
+    (FR-027s4, Constitution VII).
+
+    A sensitive attachment's extracted text is never searched and never returned by
+    search (FR-022b, FR-029), and an attachment's sensitivity may be raised but never
+    lowered (FR-022c). Bodies and downloads carry `Cache-Control: no-store` so the
+    browser writes no decrypted copy to disk (Constitution VII as amended in v1.3.0).
+
+    Every response body uses Western Arabic digits. Messages shown to users are Arabic.
+    All timestamps are RFC 3339 in UTC; the client renders them in Africa/Cairo.
 
 servers:
   - url: https://localhost:8443/api/v1
-    description: Local development. TLS only — there is no plaintext listener (FR-029).
+    description: Local development. TLS only — there is no plaintext listener.
 
 tags:
+  - name: system
+    description: Liveness
   - name: auth
     description: Signing in, signing out, and the caller's own account
   - name: users
     description: Account administration — administrator only
   - name: records
     description: Recorded actions — administrator only
-  - name: system
-    description: Liveness
+  - name: properties
+    description: The register — list, detail, add, modify, archive, restore
+  - name: lookups
+    description: Property types and areas — read by anyone signed in, written by admin
+  - name: custom-fields
+    description: Custom field definitions — administrator only
+  - name: search
+    description: Advanced search across built-in and custom fields
+  - name: attachments
+    description: Documents held against a property
+  - name: attachment-text
+    description: Text read out of a document, and corrections to it
+  - name: document-search
+    description: Finding properties by what their documents say
 
 security:
   - sessionCookie: []
 
 paths:
+
   /health:
     get:
       tags: [system]
@@ -57,6 +82,24 @@ paths:
         '503':
           $ref: '#/components/responses/Error'
 
+  /dashboard:
+    get:
+      tags: [system]
+      operationId: getDashboard
+      summary: Compact counts for the home screen
+      description: |
+        Returns the home-screen counts in one database query. This is operational
+        information, so both managers and administrators may read it; configuration
+        remains administrator-only.
+      x-required-role: manager
+      responses:
+        '200':
+          description: Current counts across properties, attachments, and configuration.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardCounts' }
+        '401': { $ref: '#/components/responses/Error' }
+
   /auth/login:
     post:
       tags: [auth]
@@ -66,10 +109,9 @@ paths:
         Verifies a username and password and issues a session cookie.
 
         The refusal for an unknown username, a wrong password, and a deactivated
-        account is byte-identical (FR-013). Repeated failures impose a growing wait
-        that applies equally to usernames that do not exist (FR-014, FR-040); while a
-        wait is outstanding the attempt is refused as `too_soon` even if the password
-        is correct (FR-015).
+        account is byte-identical. Repeated failures impose a growing wait that
+        applies equally to usernames that do not exist; while a wait is outstanding
+        the attempt is refused as `too_soon` even if the password is correct.
       security: []
       x-required-role: none
       requestBody:
@@ -92,7 +134,7 @@ paths:
         '200':
           description: |
             Signed in. Sets the session cookie with `HttpOnly`, `Secure`,
-            `SameSite=Strict` (FR-021).
+            `SameSite=Strict`.
           headers:
             Set-Cookie:
               schema:
@@ -133,7 +175,7 @@ paths:
       tags: [auth]
       operationId: signOut
       summary: Sign out
-      description: Revokes the current session immediately (FR-019).
+      description: Revokes the current session immediately.
       x-required-role: any
       responses:
         '204':
@@ -148,8 +190,7 @@ paths:
       summary: The signed-in account as it stands right now
       description: |
         Reads role and active state from stored data on each call, so a demotion or
-        deactivation is reflected on the next request without signing out (FR-034,
-        FR-035).
+        deactivation is reflected on the next request without signing out.
       x-required-role: any
       responses:
         '200':
@@ -167,9 +208,8 @@ paths:
       operationId: changeOwnPassword
       summary: Change your own password
       description: |
-        Requires the current password (FR-011). On success every session belonging to
-        the account is revoked, including this one, and the caller must sign in again
-        (FR-020).
+        Requires the current password. On success every session belonging to the
+        account is revoked, including this one, and the caller must sign in again.
       x-required-role: any
       requestBody:
         required: true
@@ -233,10 +273,9 @@ paths:
       operationId: createUser
       summary: Create an account
       description: |
-        There is no self-registration; only an administrator reaches this operation
-        (FR-006). The new account must change its password at first sign-in (FR-010).
-        A username that canonicalizes to an existing one is refused as already in use
-        (FR-038).
+        There is no self-registration; only an administrator reaches this operation.
+        The new account must change its password at first sign-in. A username that
+        canonicalizes to an existing one is refused as already in use.
       x-required-role: admin
       requestBody:
         required: true
@@ -247,7 +286,9 @@ paths:
               required: [username, displayName, role, initialPassword]
               properties:
                 username:
-                  $ref: '#/components/schemas/Username'
+                  type: string
+                  minLength: 3
+                  maxLength: 32
                 displayName:
                   type: string
                   minLength: 1
@@ -272,7 +313,7 @@ paths:
         '403':
           $ref: '#/components/responses/Error'
         '409':
-          description: A username that renders identically already exists (FR-038).
+          description: A username that renders identically already exists.
           content:
             application/json:
               schema:
@@ -302,8 +343,7 @@ paths:
       summary: Change display name, role, or active state
       description: |
         A role change takes effect on the affected user's next request and does not end
-        their session (FR-035). Deactivation revokes every session belonging to the
-        account (FR-020).
+        their session. Deactivation revokes every session belonging to the account.
 
         Refused when the change would leave no active administrator, and when an
         administrator targets their own account for demotion or deactivation.
@@ -352,9 +392,9 @@ paths:
       operationId: resetUserPassword
       summary: Reset another account's password
       description: |
-        Administrator only (FR-012). The account must change the password at its next
-        sign-in, and all its sessions are revoked (FR-010, FR-020). The current password
-        is not required and is never readable (FR-008).
+        Administrator only. The account must change the password at its next sign-in,
+        and all its sessions are revoked. The current password is not required and is
+        never readable.
       x-required-role: admin
       requestBody:
         required: true
@@ -382,9 +422,8 @@ paths:
       operationId: listAuditRecords
       summary: Read recorded actions
       description: |
-        Administrator only (FR-043). Newest first, paged, filters combinable (FR-044,
-        FR-045). There is no operation anywhere in this document that edits or deletes a
-        record (FR-046, FR-024).
+        Administrator only. Newest first, paged, filters combinable. There is no
+        operation anywhere in this document that edits or deletes a record.
       x-required-role: admin
       parameters:
         - $ref: '#/components/parameters/Page'
@@ -438,10 +477,885 @@ paths:
           description: Invalid filter — for example a start date later than the end date.
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+              schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Error' }
         '403': { $ref: '#/components/responses/Error' }
+
+  /audit-records/{recordId}/undo:
+    parameters:
+      - name: recordId
+        in: path
+        required: true
+        description: |
+          The id of the audit record to undo. Only administrator actions can be
+          undone (Constitution VIII).
+        schema:
+          type: integer
+          format: int64
+    post:
+      tags: [records]
+      operationId: undoAuditRecord
+      summary: Reverse a recorded change
+      description: |
+        Administrator only. Reverses the change recorded by `recordId` by
+        writing a new audited change that restores only the fields present in
+        the recorded "before" value through the normal store methods. Every
+        other current field is left unchanged (Constitution VIII as amended in
+        v1.4.0).
+
+        The undo itself is recorded with action `record_reverted`, and the new
+        row carries `reversesAuditId` pointing back to `recordId`. The
+        original record is never rewritten — both halves of the pair remain
+        visible on the records screen.
+
+        Refused with 409 `version_conflict` if the business record changes
+        concurrently while the undo is being applied. Refused with 409
+        `integrity_failed` when the original change touched an encrypted field
+        whose prior value cannot be restored (the row says the field changed
+        but never what it changed from — undoing that would be a lie).
+      x-required-role: admin
+      responses:
+        '200':
+          description: Undo recorded. The new audit row is returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditRecord' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /properties:
+    get:
+      tags: [properties]
+      operationId: listProperties
+      summary: A page of the register
+      description: |
+        Sorted by name by default. `q` matches the name and the reference code after
+        Arabic normalisation. `code` and `name` are per-column filters matching those
+        single columns. Every filter combines by AND. Archived properties are excluded
+        unless `includeArchived` is true.
+      x-required-role: manager
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, enum: [10, 25, 50, 100], default: 25 }
+        - name: q
+          in: query
+          description: Matched against name and reference code.
+          schema: { type: string, maxLength: 120 }
+        - name: code
+          in: query
+          description: |
+            Column filter: substring match against the reference code after Arabic
+            normalisation. Combines with every other filter by AND.
+          schema: { type: string, maxLength: 32 }
+        - name: name
+          in: query
+          description: |
+            Column filter: substring match against the property name after Arabic
+            normalisation. Combines with every other filter by AND.
+          schema: { type: string, maxLength: 120 }
+        - name: propertyTypeId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: areaId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: includeArchived
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: A page of properties. An empty page is a valid answer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyPage' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
+    post:
+      tags: [properties]
+      operationId: createProperty
+      summary: Add a property
+      description: |
+        `code` may be supplied only by an administrator; a manager supplying it is
+        refused with 403. When omitted, the server generates the next code.
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PropertyCreate' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Property' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409':
+          description: The supplied reference code is already held, active or archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /properties/search:
+    post:
+      tags: [search]
+      operationId: searchProperties
+      summary: Advanced search across built-in and custom fields
+      description: |
+        Filters combine with AND; an unset filter constrains nothing.
+
+        A filter naming a sensitive field is refused with 400, not silently dropped
+        (Constitution VII). The server resolves every `fieldId` against the definitions
+        before building the query; an unknown id is refused.
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdvancedSearch' }
+      responses:
+        '200':
+          description: A page of matching properties.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyPage' }
+        '400':
+          description: |
+            An unknown field, a sensitive field, or an operator that does not suit the
+            field's type.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /properties/{propertyId}:
+    parameters:
+      - $ref: '#/components/parameters/PropertyId'
+    get:
+      tags: [properties]
+      operationId: getProperty
+      summary: One property with all of its fields
+      x-required-role: manager
+      responses:
+        '200':
+          description: The property, archived or not.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyDetail' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+    put:
+      tags: [properties]
+      operationId: updateProperty
+      summary: Modify a property
+      description: |
+        `version` must equal the version last read or the request is refused with
+        `version_conflict`. The reference code is not part of this body; it has its own
+        operation. An archived property is refused with `archived` until restored.
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PropertyUpdate' }
+      responses:
+        '200':
+          description: Updated, with the new version.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyDetail' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: |
+            The property changed since it was read, or it is archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /properties/{propertyId}/code:
+    parameters:
+      - $ref: '#/components/parameters/PropertyId'
+    patch:
+      tags: [properties]
+      operationId: changePropertyCode
+      summary: Set a property's reference code
+      description: |
+        Administrator only. A separate operation rather than a field in the update
+        body, so that its authorization does not depend on which fields a request
+        happens to carry (Constitution I).
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, version]
+              properties:
+                code:    { $ref: '#/components/schemas/PropertyCode' }
+                version: { type: integer }
+      responses:
+        '200':
+          description: The code was changed; the old and new codes are in the audit log.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyDetail' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /properties/{propertyId}/archive:
+    parameters:
+      - $ref: '#/components/parameters/PropertyId'
+    post:
+      tags: [properties]
+      operationId: archiveProperty
+      summary: Archive a property
+      description: |
+        The property leaves the working list but is never destroyed. Its reference
+        code stays reserved forever. An optional Arabic `note` (up to 500
+        characters) records why the property was archived; it is shown on the
+        detail screen while archived and in the audit row's detail. Restoring
+        clears the note.
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: integer }
+                note:
+                  type: string
+                  maxLength: 500
+                  description: |
+                    Optional Arabic note explaining why the property is being
+                    archived. Shown on the detail while archived and in the
+                    audit row's detail; cleared on restore.
+      responses:
+        '200':
+          description: Archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyDetail' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: Already archived, or changed since it was read.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /properties/{propertyId}/restore:
+    parameters:
+      - $ref: '#/components/parameters/PropertyId'
+    post:
+      tags: [properties]
+      operationId: restoreProperty
+      summary: Restore an archived property
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: integer }
+      responses:
+        '200':
+          description: Restored with every field as it was.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PropertyDetail' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /property-types:
+    get:
+      tags: [lookups]
+      operationId: listPropertyTypes
+      summary: Every property type
+      description: Readable by anyone signed in — the property form needs it.
+      x-required-role: manager
+      responses:
+        '200':
+          description: All property types, ordered by label.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Lookup' }
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [lookups]
+      operationId: createPropertyType
+      x-required-role: admin
+      summary: Add a property type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LookupWrite' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Lookup' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /property-types/{lookupId}:
+    parameters:
+      - $ref: '#/components/parameters/LookupId'
+    put:
+      tags: [lookups]
+      operationId: renamePropertyType
+      summary: Rename a property type
+      description: |
+        Every property carrying it shows the new label immediately, because a property
+        refers to the entry by identity.
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LookupWrite' }
+      responses:
+        '200':
+          description: Renamed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Lookup' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [lookups]
+      operationId: deletePropertyType
+      summary: Remove an unused property type
+      x-required-role: admin
+      responses:
+        '204':
+          description: Removed.
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: |
+            In use. The Arabic message states how many properties use it, archived
+            included.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /areas:
+    get:
+      tags: [lookups]
+      operationId: listAreas
+      summary: Every area
+      x-required-role: manager
+      responses:
+        '200':
+          description: All areas, ordered by label.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Lookup' }
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [lookups]
+      operationId: createArea
+      x-required-role: admin
+      summary: Add an area
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LookupWrite' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Lookup' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /areas/{lookupId}:
+    parameters:
+      - $ref: '#/components/parameters/LookupId'
+    put:
+      tags: [lookups]
+      operationId: renameArea
+      summary: Rename an area
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LookupWrite' }
+      responses:
+        '200':
+          description: Renamed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Lookup' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [lookups]
+      operationId: deleteArea
+      summary: Remove an unused area
+      x-required-role: admin
+      responses:
+        '204':
+          description: Removed.
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /custom-fields:
+    get:
+      tags: [custom-fields]
+      operationId: listCustomFields
+      summary: Every custom field definition
+      description: |
+        Readable by anyone signed in — the property form needs the definitions in
+        order to render. `isSensitive` is reported so the client can label the field;
+        the value of a sensitive field is still returned only on the property detail,
+        and never in a search (Constitution VII).
+      x-required-role: manager
+      responses:
+        '200':
+          description: All definitions in display order, each with its choices.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CustomField' }
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [custom-fields]
+      operationId: createCustomField
+      summary: Define a custom field
+      description: |
+        `isSensitive` may be true only when `fieldType` is `text`. A dropdown or
+        multiselect must arrive with at least one choice.
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomFieldCreate' }
+      responses:
+        '201':
+          description: Defined.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomField' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /custom-fields/{fieldId}:
+    parameters:
+      - $ref: '#/components/parameters/FieldId'
+    put:
+      tags: [custom-fields]
+      operationId: updateCustomField
+      summary: Rename a field, or change its choices
+      description: |
+        The label may always change. `fieldType`, `isSensitive`, and the removal of
+        an existing choice are refused with 409 once any property holds a value for
+        the field. Adding a choice is always permitted.
+      x-required-role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomFieldUpdate' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomField' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: |
+            Values exist that the change would destroy. The Arabic message states
+            how many.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [custom-fields]
+      operationId: deleteCustomField
+      summary: Remove a field no property uses
+      x-required-role: admin
+      responses:
+        '204':
+          description: Removed.
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /properties/{propertyId}/attachments:
+    parameters:
+      - $ref: '#/components/parameters/PropertyId'
+    get:
+      tags: [attachments]
+      operationId: listAttachments
+      summary: The documents held against a property
+      x-required-role: manager
+      responses:
+        '200':
+          description: Newest first. An empty list is a valid answer.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Attachment' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+    post:
+      tags: [attachments]
+      operationId: uploadAttachment
+      summary: Attach a document
+      description: |
+        The type is judged from the file's content, never from its name (FR-004a). The size
+        limit is configuration; the refusal message states the configured value (FR-005a).
+        Marking `isSensitive` at upload means the extracted text will be encrypted and never
+        searched. Refused when the property is archived (FR-006).
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, description]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                description:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                isSensitive:
+                  type: boolean
+                  default: false
+      responses:
+        '201':
+          description: Stored. Extraction has been queued and has not run yet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attachment' }
+        '400':
+          description: |
+            Missing or too-short description, or a file whose content is not an accepted
+            type — including a file renamed to look like one.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '409':
+          description: The property is archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: Larger than the configured maximum. The message states the limit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: |
+            The master key is unavailable, so nothing can be encrypted. Nothing is stored
+            (FR-016).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /attachments/{attachmentId}:
+    parameters:
+      - $ref: '#/components/parameters/AttachmentId'
+    get:
+      tags: [attachments]
+      operationId: getAttachment
+      summary: One attachment's metadata
+      x-required-role: manager
+      responses:
+        '200':
+          description: Metadata only. The body has its own operation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attachment' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+    patch:
+      tags: [attachments]
+      operationId: updateAttachment
+      summary: Change the description, or raise sensitivity
+      description: |
+        `description` may always change. `isSensitive` may only go from false to true;
+        `true` → `false` is refused with `409` (FR-022c). Promoting seals the extracted text
+        and removes it from search in the same transaction.
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description: { type: string, minLength: 2, maxLength: 200 }
+                isSensitive: { type: boolean }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attachment' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: |
+            An attempt to make a sensitive attachment non-sensitive, or the property is
+            archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+    delete:
+      tags: [attachments]
+      operationId: deleteAttachment
+      summary: Remove an attachment
+      description: |
+        Removes the stored file and the extracted text with it (FR-009). The audit record of
+        it having existed remains, as every audit record does.
+      x-required-role: manager
+      responses:
+        '204':
+          description: Removed.
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: The property is archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /attachments/{attachmentId}/content:
+    parameters:
+      - $ref: '#/components/parameters/AttachmentId'
+      - name: disposition
+        in: query
+        description: |
+          `inline` streams the document for viewing in the application and is honoured only
+          for `pdf` and image types; everything else is served as an attachment whatever is
+          asked for (FR-013c). Default is `attachment`.
+        schema:
+          type: string
+          enum: [inline, attachment]
+          default: attachment
+    get:
+      tags: [attachments]
+      operationId: getAttachmentContent
+      summary: The document itself, decrypted for this request only
+      description: |
+        Decrypted and streamed per request. **Both viewing and downloading are reads and
+        both are audited** (FR-013d); the audit row is committed before the first byte is
+        served (research.md D-010). The response carries `Cache-Control: no-store`, because
+        a decrypted document in a browser cache is a decrypted document on disk.
+      x-required-role: manager
+      responses:
+        '200':
+          description: The original bytes, unchanged.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: 'no-store' }
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422':
+          description: |
+            The stored file failed authentication before streaming began — the header or the
+            first chunk has been altered or truncated. **No content whatsoever is returned**
+            (FR-014).
+
+            Tampering discovered in a later chunk cannot produce this status, because the
+            response has already begun. The server logs it and abandons the body without
+            completing `Content-Length`, so the transfer fails visibly and a truncated
+            document can never be mistaken for a whole one.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: The master key is unavailable, so nothing can be decrypted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /attachments/{attachmentId}/text:
+    parameters:
+      - $ref: '#/components/parameters/AttachmentId'
+    get:
+      tags: [attachment-text]
+      operationId: getAttachmentText
+      summary: The text read out of this document
+      description: |
+        For a sensitive attachment the text is decrypted for this request only, after the
+        role check, and appears in no log or audit record (FR-024c).
+      x-required-role: manager
+      responses:
+        '200':
+          description: |
+            The text, or an absent body when extraction found nothing or has not run.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttachmentText' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+    put:
+      tags: [attachment-text]
+      operationId: correctAttachmentText
+      summary: Correct the extracted text
+      description: |
+        Recognition of Arabic on a scan is imperfect; this is how a person fixes it so that
+        searches find the document. The correction is recorded with who made it, and is not
+        overwritten by any later extraction (FR-024a, FR-024b).
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string }
+      responses:
+        '200':
+          description: Corrected.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttachmentText' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /attachments/{attachmentId}/text/reextract:
+    parameters:
+      - $ref: '#/components/parameters/AttachmentId'
+    post:
+      tags: [attachment-text]
+      operationId: reextractAttachmentText
+      summary: Try extraction again
+      description: |
+        Permitted from `failed` and from `empty` (FR-020b). Refused with `409` when a person
+        has corrected the text, because re-extraction would discard the correction; the
+        correction must be cleared deliberately first (FR-020c). Refused with `409` when an
+        extraction for this attachment is already running (FR-020d).
+      x-required-role: manager
+      responses:
+        '202':
+          description: Queued. The attachment returns to `pending`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attachment' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: |
+            The text has been corrected, an extraction is already running, or the state does
+            not permit re-extraction.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /attachments/search:
+    post:
+      tags: [document-search]
+      operationId: searchDocuments
+      summary: Find properties by what their documents say
+      description: |
+        Searches the extracted text of **non-sensitive** attachments only. Sensitive
+        attachments are excluded for every role including administrators, structurally
+        rather than by a filter: their text carries no searchable form at all (research.md
+        D-008). The client is told the exclusion exists so it can say so in Arabic
+        (FR-022b).
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [q]
+              properties:
+                q:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                  description: Matched after the same Arabic normalisation as property names.
+                includeArchived: { type: boolean, default: false }
+                page: { type: integer, minimum: 1, default: 1 }
+                pageSize: { type: integer, enum: [10, 25, 50, 100], default: 25 }
+      responses:
+        '200':
+          description: A page of matches, each naming the property and the attachment.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentSearchPage' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
 
 components:
 
@@ -451,9 +1365,9 @@ components:
       in: cookie
       name: pms_session
       description: |
-        Opaque session token. The server stores only its hash. The cookie is `HttpOnly`,
-        so no script can read it (FR-021). The token carries identity only — role and
-        active state are read from stored data on every request (FR-034).
+        Set by /auth/login. HttpOnly, Secure, SameSite=Strict. Not readable by
+        JavaScript and never placed in a URL. Carries identity only; role and active
+        state are read from stored data on every request.
 
   parameters:
     UserId:
@@ -463,6 +1377,28 @@ components:
       schema:
         type: string
         format: uuid
+    PropertyId:
+      name: propertyId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    LookupId:
+      name: lookupId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    FieldId:
+      name: fieldId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AttachmentId:
+      name: attachmentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     Page:
       name: page
       in: query
@@ -484,25 +1420,14 @@ components:
     Role:
       type: string
       enum: [admin, manager]
-      description: Exactly two roles exist (FR-002).
-
-    Username:
-      type: string
-      minLength: 3
-      maxLength: 32
-      description: |
-        Arabic letters, Latin letters, Western digits, dot, underscore, or hyphen
-        (FR-036). Stored as typed and displayed as typed (FR-039); matched after
-        canonicalization, so case and Arabic letter variants do not create a second
-        account (FR-038). Invisible and bidirectional control characters are refused
-        (FR-037). Eastern Arabic digits are converted to Western on entry (FR-033).
+      description: Exactly two roles exist.
 
     User:
       type: object
       required: [id, username, displayName, role, isActive, mustChangePassword, createdAt]
       properties:
         id: { type: string, format: uuid }
-        username: { $ref: '#/components/schemas/Username' }
+        username: { type: string }
         displayName: { type: string }
         role: { $ref: '#/components/schemas/Role' }
         isActive: { type: boolean }
@@ -514,9 +1439,8 @@ components:
       type: object
       required: [id, username, displayName, role, mustChangePassword]
       description: |
-        The caller as they stand on this request. `mustChangePassword` true means the
-        client must send the user to the password-change screen and no other (FR-007,
-        FR-010).
+        The caller as they stand on this request. `mustChangePassword` true means
+        the client must send the user to the password-change screen and no other.
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -538,14 +1462,46 @@ components:
         - account_deactivated
         - sessions_invalidated
         - admin_recovery_used
+        - property_created
+        - property_modified
+        - property_archived
+        - property_restored
+        - property_code_changed
+        - lookup_created
+        - lookup_renamed
+        - lookup_removed
+        - custom_field_created
+        - custom_field_renamed
+        - custom_field_removed
+        - custom_field_choice_added
+        - custom_field_choice_removed
+        - attachment_added
+        - attachment_described
+        - attachment_sensitivity_raised
+        - attachment_removed
+        - attachment_read
+        - attachment_text_corrected
+        - attachment_reextract_requested
+        - record_reverted
 
     AuditRecord:
       type: object
       required: [id, occurredAt, action, actorUsername, sourceIp]
       description: |
-        A record is never rewritten. The snapshot fields show accounts as they were named
-        when the action happened, even if renamed since. Never contains a password or any
-        decrypted value (FR-025).
+        A record is never rewritten. The snapshot fields show accounts as they were
+        named when the action happened, even if renamed since. Never contains a
+        password, a decrypted value, a key, or a wrapped key (Constitution VII).
+
+        `before` and `after` contain only fields whose values differ. Values
+        appear ONLY for fields stored unencrypted at rest. A row whose change
+        touched a sensitive field, an attachment's extracted text, or any other
+        encrypted column records that the field changed and records neither
+        value (Constitution VIII as amended in v1.4.0).
+
+        `reversesAuditId` names the record this one reverses when the action is
+        `record_reverted`. `revertedByAuditId` names the record that reversed
+        this one, if any. The two halves of an undo pair are both visible —
+        the log gains a reversal, never an erasure.
       properties:
         id: { type: integer, format: int64 }
         occurredAt: { type: string, format: date-time }
@@ -559,6 +1515,13 @@ components:
           oneOf:
             - $ref: '#/components/schemas/Role'
             - type: 'null'
+        entityType:
+          type: [string, 'null']
+          enum: [property, property_type, area, custom_field, attachment, null]
+          description: The kind of business record this row concerns, when any.
+        entityId:
+          type: [string, 'null']
+          description: The identifier of that record (a reference code for a property).
         targetId:
           type: [string, 'null']
           format: uuid
@@ -569,14 +1532,403 @@ components:
           type: [object, 'null']
           additionalProperties: true
           description: Field names and identifiers only.
+        before:
+          type: [object, 'null']
+          additionalProperties: true
+          description: |
+            Only values that changed, as they were before the change, keyed by
+            field name. Fields stored encrypted at rest are absent (or marked as
+            having changed) — never recorded as their decrypted value. Absent for
+            actions that have no useful prior state (creates, attachment reads).
+        after:
+          type: [object, 'null']
+          additionalProperties: true
+          description: |
+            Only values that changed, as they were after the change, with the
+            same restrictions as `before`. Absent for actions that have no useful
+            post state (the deletion of an attachment).
+        reversesAuditId:
+          type: [integer, 'null']
+          format: int64
+          description: |
+            For an action `record_reverted`, the id of the audit record this
+            one reverses. Null otherwise. The reversed record stays visible;
+            the log gains a reversal, never an erasure.
+        revertedByAuditId:
+          type: [integer, 'null']
+          format: int64
+          description: |
+            For a record that has been undone, the id of the `record_reverted`
+            row that undid it. Null otherwise. The two halves of an undo pair
+            appear side by side on the records screen.
+
+    PropertyCode:
+      type: string
+      minLength: 1
+      maxLength: 32
+      description: |
+        Unique across the register, active and archived alike, compared after
+        trimming, case folding, and Arabic normalisation. Never reused.
+
+    DashboardCounts:
+      type: object
+      required:
+        - propertiesTotal
+        - propertiesActive
+        - propertiesArchived
+        - attachmentsTotal
+        - attachmentsPending
+        - customFieldsTotal
+        - propertyTypesTotal
+        - areasTotal
+      properties:
+        propertiesTotal:    { type: integer, minimum: 0 }
+        propertiesActive:   { type: integer, minimum: 0 }
+        propertiesArchived: { type: integer, minimum: 0 }
+        attachmentsTotal:   { type: integer, minimum: 0 }
+        attachmentsPending:
+          type: integer
+          minimum: 0
+          description: Attachments whose extraction state is `pending`.
+        customFieldsTotal:  { type: integer, minimum: 0 }
+        propertyTypesTotal: { type: integer, minimum: 0 }
+        areasTotal:         { type: integer, minimum: 0 }
+
+    PropertyName:
+      type: string
+      minLength: 2
+      maxLength: 120
+      description: |
+        Descriptive, not identifying. Two properties may share a name.
+
+    Lookup:
+      type: object
+      required: [id, label]
+      properties:
+        id:    { type: string, format: uuid }
+        label: { type: string, minLength: 1, maxLength: 60 }
+
+    LookupWrite:
+      type: object
+      required: [label]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 60 }
+
+    CustomFieldType:
+      type: string
+      enum: [text, dropdown, multiselect, checkbox]
+
+    CustomFieldChoice:
+      type: object
+      required: [id, label]
+      properties:
+        id:    { type: string, format: uuid }
+        label: { type: string, minLength: 1, maxLength: 60 }
+
+    CustomField:
+      type: object
+      required: [id, label, fieldType, isSensitive, choices]
+      properties:
+        id:          { type: string, format: uuid }
+        label:       { type: string, minLength: 1, maxLength: 60 }
+        fieldType:   { $ref: '#/components/schemas/CustomFieldType' }
+        isSensitive:
+          type: boolean
+          description: |
+            True only for a `text` field. Its values are encrypted at rest and it
+            cannot be searched, sorted, or filtered (Constitution VII).
+        choices:
+          type: array
+          items: { $ref: '#/components/schemas/CustomFieldChoice' }
+        valuesCount:
+          type: integer
+          minimum: 0
+          description: |
+            Number of properties (active or archived) holding a value for this
+            field. Sensitivity and type are fixed once this is non-zero
+            (FR-027s5, FR-027g). Always zero for fields created in this response.
+
+    CustomFieldCreate:
+      type: object
+      required: [label, fieldType]
+      properties:
+        label:       { type: string, minLength: 1, maxLength: 60 }
+        fieldType:   { $ref: '#/components/schemas/CustomFieldType' }
+        isSensitive: { type: boolean, default: false }
+        choices:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 60 }
+
+    CustomFieldUpdate:
+      type: object
+      required: [label]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 60 }
+        addChoices:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 60 }
+        removeChoiceIds:
+          type: array
+          items: { type: string, format: uuid }
+
+    CustomFieldValue:
+      type: object
+      required: [fieldId]
+      description: |
+        Exactly one of the value members is present, matching the field's type. A
+        sensitive field's value arrives here decrypted, and only on the property
+        detail — never in a list or a search result.
+      properties:
+        fieldId:   { type: string, format: uuid }
+        text:      { type: [string, 'null'] }
+        checked:   { type: [boolean, 'null'] }
+        choiceId:  { type: [string, 'null'], format: uuid }
+        choiceIds:
+          type: array
+          items: { type: string, format: uuid }
+
+    PropertySummary:
+      type: object
+      required: [id, code, name, propertyType, area, isArchived]
+      description: One row of the list. Custom values are not included here.
+      properties:
+        id:           { type: string, format: uuid }
+        code:         { $ref: '#/components/schemas/PropertyCode' }
+        name:         { $ref: '#/components/schemas/PropertyName' }
+        propertyType: { $ref: '#/components/schemas/Lookup' }
+        area:         { $ref: '#/components/schemas/Lookup' }
+        isArchived:   { type: boolean }
+        matchedAttachments:
+          type: array
+          description: |
+            Present only when `documentText` was part of the search. Names the
+            attachments whose extracted text matched, so a hit says *why* it
+            matched rather than only *that* it did (FR-026).
+          items:
+            type: object
+            required: [id, description]
+            properties:
+              id:          { type: string, format: uuid }
+              description: { type: string }
+
+
+    Property:
+      allOf:
+        - $ref: '#/components/schemas/PropertySummary'
+        - type: object
+          required: [version, createdAt, createdBy, updatedAt, updatedBy]
+          properties:
+            version:    { type: integer }
+            createdAt:  { type: string, format: date-time }
+            createdBy:  { type: string }
+            updatedAt:  { type: string, format: date-time }
+            updatedBy:  { type: string }
+            archivedAt: { type: [string, 'null'], format: date-time }
+            archivedBy: { type: [string, 'null'] }
+            archiveNote: { type: [string, 'null'], maxLength: 500 }
+
+    PropertyDetail:
+      allOf:
+        - $ref: '#/components/schemas/Property'
+        - type: object
+          required: [customValues]
+          properties:
+            customValues:
+              type: array
+              items: { $ref: '#/components/schemas/CustomFieldValue' }
+
+    PropertyCreate:
+      type: object
+      required: [name, propertyTypeId, areaId]
+      properties:
+        name:           { $ref: '#/components/schemas/PropertyName' }
+        propertyTypeId:
+          type: string
+          format: uuid
+          description: Must name a configured type; a free-typed value is impossible.
+        areaId:         { type: string, format: uuid }
+        code:
+          $ref: '#/components/schemas/PropertyCode'
+          description: |
+            Administrator only. A manager supplying it is refused with 403. Omitted,
+            the server generates the next code.
+        customValues:
+          type: array
+          items: { $ref: '#/components/schemas/CustomFieldValue' }
+
+    PropertyUpdate:
+      type: object
+      required: [name, propertyTypeId, areaId, version]
+      properties:
+        name:           { $ref: '#/components/schemas/PropertyName' }
+        propertyTypeId: { type: string, format: uuid }
+        areaId:         { type: string, format: uuid }
+        version:        { type: integer }
+        customValues:
+          type: array
+          items: { $ref: '#/components/schemas/CustomFieldValue' }
+
+    PropertyPage:
+      type: object
+      required: [items, page, pageSize, totalItems]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PropertySummary' }
+        page:       { type: integer }
+        pageSize:   { type: integer }
+        totalItems: { type: integer }
+
+    SearchOperator:
+      type: string
+      enum: [contains, equals, includesAll, isTrue, isFalse]
+      description: |
+        `contains` suits text; `equals` a dropdown; `includesAll` a multiselect;
+        `isTrue`/`isFalse` a checkbox. The server checks the pairing and refuses a
+        mismatch with 400.
+
+    CustomFieldFilter:
+      type: object
+      required: [fieldId, operator]
+      properties:
+        fieldId:   { type: string, format: uuid }
+        operator:  { $ref: '#/components/schemas/SearchOperator' }
+        text:      { type: [string, 'null'] }
+        choiceId:  { type: [string, 'null'], format: uuid }
+        choiceIds:
+          type: array
+          items: { type: string, format: uuid }
+
+    AdvancedSearch:
+      type: object
+      properties:
+        q:              { type: string, maxLength: 120 }
+        propertyTypeId: { type: string, format: uuid }
+        areaId:         { type: string, format: uuid }
+        includeArchived: { type: boolean, default: false }
+        page:     { type: integer, minimum: 1, default: 1 }
+        pageSize: { type: integer, enum: [10, 25, 50, 100], default: 25 }
+        documentText:
+          type: string
+          maxLength: 200
+          description: |
+            Matches text extracted from the property's attachments, after the same
+            Arabic normalisation as the name. Sensitive attachments are never
+            searched, for any role (FR-022b, FR-029). Combines with every other
+            filter by AND, like all the rest.
+        attachmentName:
+          type: string
+          maxLength: 200
+          description: |
+            Matches an attachment's description or its original filename, after the
+            same Arabic normalisation as property names. Unlike `documentText`, this
+            searches **sensitive attachments too**: sensitivity conceals a document's
+            contents, never its existence or its description (FR-022d).
+        hasAttachments:
+          type: string
+          enum: ["any", "yes", "no"]   # quoted: YAML reads bare yes/no as booleans
+          default: any
+          description: |
+            `yes` returns only properties that hold at least one attachment, `no` only
+            those that hold none, `any` does not constrain. Combines with every other
+            filter by AND.
+        customFilters:
+          type: array
+          items: { $ref: '#/components/schemas/CustomFieldFilter' }
+
+    ExtractState:
+      type: string
+      enum: [pending, done, empty, not_eligible, too_large, failed]
+      description: |
+        `empty` and `not_eligible` are normal outcomes, not errors. `not_eligible` also
+        covers a document whose family needs a tool that is not installed (research.md
+        D-012), which the client reports in Arabic rather than as a failure.
+
+    Attachment:
+      type: object
+      required:
+        [id, propertyId, description, originalFilename, contentType, byteSize,
+         isSensitive, extractState, canViewInline, createdAt, createdBy]
+      properties:
+        id:               { type: string, format: uuid }
+        propertyId:       { type: string, format: uuid }
+        description:      { type: string, minLength: 2, maxLength: 200 }
+        originalFilename: { type: string }
+        contentType:      { type: string, description: Determined from content, not filename. }
+        byteSize:         { type: integer, format: int64 }
+        isSensitive:
+          type: boolean
+          description: |
+            True means the extracted text is encrypted and never searched. May be raised,
+            never lowered.
+        extractState:     { $ref: '#/components/schemas/ExtractState' }
+        extractError:
+          type: [string, 'null']
+          description: A reason code. Never any part of the document's content.
+        canViewInline:
+          type: boolean
+          description: |
+            True for `pdf` and images. False means the client offers a download instead of
+            a viewer (FR-013c).
+        createdAt:  { type: string, format: date-time }
+        createdBy:  { type: string }
+        updatedAt:  { type: string, format: date-time }
+        updatedBy:  { type: string }
+
+    AttachmentText:
+      type: object
+      required: [attachmentId, truncated, isCorrected]
+      properties:
+        attachmentId: { type: string, format: uuid }
+        body:
+          type: [string, 'null']
+          description: |
+            Absent when extraction found nothing or has not run. For a sensitive attachment
+            this is the decrypted text, returned only after the role check.
+        truncated:
+          type: boolean
+          description: |
+            True when the document produced more text than the configured cap, so a phrase
+            past the cut will not be found (FR-021).
+        isCorrected:  { type: boolean }
+        correctedBy:  { type: [string, 'null'] }
+        correctedAt:  { type: [string, 'null'], format: date-time }
+        extractedAt:  { type: [string, 'null'], format: date-time }
+
+    DocumentSearchHit:
+      type: object
+      required: [propertyId, propertyCode, propertyName, attachmentId, attachmentDescription]
+      properties:
+        propertyId:            { type: string, format: uuid }
+        propertyCode:          { type: string }
+        propertyName:          { type: string }
+        attachmentId:          { type: string, format: uuid }
+        attachmentDescription: { type: string }
+
+    DocumentSearchPage:
+      type: object
+      required: [items, page, pageSize, totalItems, sensitiveExcluded]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentSearchHit' }
+        page:       { type: integer }
+        pageSize:   { type: integer }
+        totalItems: { type: integer }
+        sensitiveExcluded:
+          type: boolean
+          description: |
+            Always true. Present so the client can state in Arabic that sensitive documents
+            are not searched, rather than silently returning fewer results (FR-022b).
 
     Error:
       type: object
       required: [code, message]
       description: |
         The single error shape used by every operation in this document
-        (Constitution III). `message` is Arabic and states what the user should do next
-        (FR-027). It never carries internal failure detail (FR-028).
+        (Constitution III). `message` is Arabic and states what the user should do
+        next. It never carries internal failure detail, a key, a wrapped key, or a
+        decrypted value (Constitution VII).
       properties:
         code:
           type: string
@@ -588,7 +1940,14 @@ components:
             - forbidden
             - not_found
             - conflict
+            - in_use
+            - version_conflict
+            - archived
             - password_change_required
+            - too_large
+            - unsupported_type
+            - integrity_failed
+            - key_unavailable
             - internal_error
         message:
           type: string
@@ -598,6 +1957,11 @@ components:
           additionalProperties:
             type: string
           description: Field-level Arabic messages, keyed by field name, for form errors.
+        retryAfterSeconds:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 60
+          description: Seconds remaining before another attempt is accepted (sign-in throttling).
 
   responses:
     Error:

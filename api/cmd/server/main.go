@@ -13,12 +13,17 @@ import (
 	"syscall"
 	"time"
 
+	"pms/internal/attachments"
 	"pms/internal/auth"
+	"pms/internal/blobstore"
 	"pms/internal/config"
+	pmscrypto "pms/internal/crypto"
 	"pms/internal/db"
+	"pms/internal/extract"
 	"pms/internal/gen"
 	"pms/internal/httpx"
 	"pms/internal/identity"
+	"pms/internal/properties"
 )
 
 func main() {
@@ -40,8 +45,22 @@ func main() {
 	}
 	defer pool.Close()
 
-	store := &identity.Store{Pool: pool}
-	srv := httpx.NewServer(cfg, pool, store)
+	identityStore := &identity.Store{Pool: pool}
+	propertiesStore := &properties.Store{}
+	envelope, err := pmscrypto.New(cfg.FieldKEK)
+	if err != nil {
+		slog.Error("envelope init failed", "err", err)
+		os.Exit(1)
+	}
+
+	caps := extract.Probe(ctx)
+	slog.Info(caps.String())
+
+	store := blobstore.New(cfg.AttachmentStore)
+	attachments.SetStore(store)
+
+	srv := httpx.NewServer(cfg, pool, identityStore, propertiesStore, envelope)
+	srv.SetCapabilities(caps)
 
 	// The generated handler registers routes with the OpenAPI base path
 	// (here /api/v1) on its own mux; pass BaseURL so the patterns match the
@@ -64,6 +83,12 @@ func main() {
 		}
 	}()
 
+	// Extraction worker: polls for due rows, claims each with a conditional
+	// UPDATE so two workers cannot race, and processes it. Started alongside
+	// the listener and stopped cleanly on shutdown (research.md D-006).
+	worker := attachments.NewWorker(pool, envelope, caps, cfg.ExtractTextMaxBytes)
+	go worker.Run(ctx)
+
 	httpServer := &http.Server{
 		Addr:      cfg.ListenAddr,
 		Handler:   srv.Routes(genHandler),
@@ -71,8 +96,6 @@ func main() {
 		ErrorLog:  slog.NewLogLogger(slog.Default().Handler(), slog.LevelInfo),
 	}
 
-	// Start TLS listener. Refuse to start if either cert or key is missing;
-	// the server never opens a plaintext port.
 	go func() {
 		slog.Info("api listening (TLS)", "addr", cfg.ListenAddr, "cert", cfg.TLSCertPath)
 		if err := httpServer.ListenAndServeTLS(cfg.TLSCertPath, cfg.TLSKeyPath); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -88,3 +111,4 @@ func main() {
 		slog.Error("shutdown failed", "err", err)
 	}
 }
+

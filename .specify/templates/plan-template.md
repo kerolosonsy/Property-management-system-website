@@ -40,7 +40,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Derived from `.specify/memory/constitution.md` v1.1.0. Mark each gate PASS, FAIL,
+Derived from `.specify/memory/constitution.md` v1.4.0. Mark each gate PASS, FAIL,
 or N/A with a one-line justification. A FAIL blocks the phase until resolved or
 recorded in Complexity Tracking below.
 
@@ -64,8 +64,13 @@ recorded in Complexity Tracking below.
 - [ ] **VII. Encryption** — Uploads are AES-256-GCM envelope-encrypted before
       touching disk (no plaintext temp file); attachments served only via an
       authorized decrypting handler; national ID / passport / bank account / IBAN
-      columns encrypted; no secret, key, or decrypted value reachable by a log;
-      TLS on every listener including local.
+      columns encrypted; any administrator-designated sensitive field is free-text
+      only, fixed once values exist, envelope-encrypted, and excluded from search,
+      sort, filter, and report; text derived from an attachment inherits that
+      attachment's confidentiality, an uploader-designated attachment's text is
+      encrypted, excluded from search for every role, and its designation is
+      one-way; no attachment or derived text leaves the machine; no secret, key, or
+      decrypted value reachable by a log; TLS on every listener including local.
 - [ ] **VIII. Audit** — Every create/update/delete on business records and every
       attachment download writes an append-only audit row (actor, role, action,
       entity, UTC timestamp, IP) in the same transaction as the change.

@@ -8,19 +8,13 @@ import (
 
 	"pms/internal/audit"
 	"pms/internal/auth"
+	"pms/internal/gen"
 	"pms/internal/identity"
 )
 
-// signInBody mirrors the OpenAPI request body. Using a private struct here
-// keeps the handler independent of any future generated body type.
-type signInBody struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 func (s *Server) handleSignIn() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body signInBody
+		var body gen.SignInJSONBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -73,12 +67,15 @@ func (s *Server) handleSignIn() http.Handler {
 		// Identical refusal for unknown username, wrong password, deactivated account (FR-013).
 		if acct == nil {
 			_ = s.delay.RecordFailure(r.Context(), tx, canonical)
-			_ = audit.Write(r.Context(), tx, audit.Entry{
+			if err := audit.Write(r.Context(), tx, audit.Entry{
 				Action:        audit.SignInFailed,
 				ActorUsername: body.Username,
 				SourceIP:      ip,
 				Detail:        map[string]string{"reason": "unknown_user"},
-			})
+			}); err != nil {
+				refuseInternal(w, err)
+				return
+			}
 			if err := tx.Commit(r.Context()); err != nil {
 				refuseInternal(w, err)
 				return
@@ -89,14 +86,17 @@ func (s *Server) handleSignIn() http.Handler {
 
 		if err := auth.VerifyPassword(body.Password, acct.PasswordHash); err != nil {
 			_ = s.delay.RecordFailure(r.Context(), tx, canonical)
-			_ = audit.Write(r.Context(), tx, audit.Entry{
-				Action:        audit.SignInFailed,
+			if err := audit.Write(r.Context(), tx, audit.Entry{
+				Action:         audit.SignInFailed,
 				ActorAccountID: &acct.ID,
 				ActorUsername:  acct.Username,
 				ActorRole:      rolePtr(acct.Role),
 				SourceIP:       ip,
 				Detail:         map[string]string{"reason": "bad_password"},
-			})
+			}); err != nil {
+				refuseInternal(w, err)
+				return
+			}
 			if err := tx.Commit(r.Context()); err != nil {
 				refuseInternal(w, err)
 				return
@@ -106,14 +106,17 @@ func (s *Server) handleSignIn() http.Handler {
 		}
 
 		if !acct.IsActive {
-			_ = audit.Write(r.Context(), tx, audit.Entry{
-				Action:        audit.SignInFailed,
+			if err := audit.Write(r.Context(), tx, audit.Entry{
+				Action:         audit.SignInFailed,
 				ActorAccountID: &acct.ID,
 				ActorUsername:  acct.Username,
 				ActorRole:      rolePtr(acct.Role),
 				SourceIP:       ip,
 				Detail:         map[string]string{"reason": "deactivated"},
-			})
+			}); err != nil {
+				refuseInternal(w, err)
+				return
+			}
 			if err := tx.Commit(r.Context()); err != nil {
 				refuseInternal(w, err)
 				return
@@ -132,13 +135,16 @@ func (s *Server) handleSignIn() http.Handler {
 
 		actorID := acct.ID
 		actorRole := acct.Role
-		_ = audit.Write(r.Context(), tx, audit.Entry{
-			Action:        audit.SignInSucceeded,
+		if err := audit.Write(r.Context(), tx, audit.Entry{
+			Action:         audit.SignInSucceeded,
 			ActorAccountID: &actorID,
 			ActorUsername:  acct.Username,
 			ActorRole:      &actorRole,
 			SourceIP:       ip,
-		})
+		}); err != nil {
+			refuseInternal(w, err)
+			return
+		}
 		if err := tx.Commit(r.Context()); err != nil {
 			refuseInternal(w, err)
 			return
@@ -183,11 +189,11 @@ func validateUsername(raw string) error {
 
 func currentUserResponse(a *identity.Account) map[string]any {
 	out := map[string]any{
-		"id":                  a.ID.String(),
-		"username":            a.Username,
-		"displayName":         a.DisplayName,
-		"role":                a.Role,
-		"mustChangePassword":  a.MustChangePassword,
+		"id":                 a.ID.String(),
+		"username":           a.Username,
+		"displayName":        a.DisplayName,
+		"role":               a.Role,
+		"mustChangePassword": a.MustChangePassword,
 	}
 	return out
 }

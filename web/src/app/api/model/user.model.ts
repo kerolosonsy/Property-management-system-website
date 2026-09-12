@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -12,9 +12,6 @@ import { Role } from './role.model';
 
 export interface User { 
     id: string;
-    /**
-     * Arabic letters, Latin letters, Western digits, dot, underscore, or hyphen (FR-036). Stored as typed and displayed as typed (FR-039); matched after canonicalization, so case and Arabic letter variants do not create a second account (FR-038). Invisible and bidirectional control characters are refused (FR-037). Eastern Arabic digits are converted to Western on entry (FR-033). 
-     */
     username: string;
     displayName: string;
     role: Role;

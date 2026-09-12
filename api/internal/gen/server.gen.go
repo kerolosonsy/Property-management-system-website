@@ -22,19 +22,85 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AdvancedSearchHasAttachments.
+const (
+	Any AdvancedSearchHasAttachments = "any"
+	No  AdvancedSearchHasAttachments = "no"
+	Yes AdvancedSearchHasAttachments = "yes"
+)
+
+// Valid indicates whether the value is a known member of the AdvancedSearchHasAttachments enum.
+func (e AdvancedSearchHasAttachments) Valid() bool {
+	switch e {
+	case Any:
+		return true
+	case No:
+		return true
+	case Yes:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdvancedSearchPageSize.
+const (
+	AdvancedSearchPageSizeN10  AdvancedSearchPageSize = 10
+	AdvancedSearchPageSizeN100 AdvancedSearchPageSize = 100
+	AdvancedSearchPageSizeN25  AdvancedSearchPageSize = 25
+	AdvancedSearchPageSizeN50  AdvancedSearchPageSize = 50
+)
+
+// Valid indicates whether the value is a known member of the AdvancedSearchPageSize enum.
+func (e AdvancedSearchPageSize) Valid() bool {
+	switch e {
+	case AdvancedSearchPageSizeN10:
+		return true
+	case AdvancedSearchPageSizeN100:
+		return true
+	case AdvancedSearchPageSizeN25:
+		return true
+	case AdvancedSearchPageSizeN50:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AuditAction.
 const (
-	AccountActivated    AuditAction = "account_activated"
-	AccountCreated      AuditAction = "account_created"
-	AccountDeactivated  AuditAction = "account_deactivated"
-	AccountRoleChanged  AuditAction = "account_role_changed"
-	AdminRecoveryUsed   AuditAction = "admin_recovery_used"
-	PasswordChanged     AuditAction = "password_changed"
-	PasswordReset       AuditAction = "password_reset"
-	SessionsInvalidated AuditAction = "sessions_invalidated"
-	SignInFailed        AuditAction = "sign_in_failed"
-	SignInSucceeded     AuditAction = "sign_in_succeeded"
-	SignOut             AuditAction = "sign_out"
+	AccountActivated             AuditAction = "account_activated"
+	AccountCreated               AuditAction = "account_created"
+	AccountDeactivated           AuditAction = "account_deactivated"
+	AccountRoleChanged           AuditAction = "account_role_changed"
+	AdminRecoveryUsed            AuditAction = "admin_recovery_used"
+	AttachmentAdded              AuditAction = "attachment_added"
+	AttachmentDescribed          AuditAction = "attachment_described"
+	AttachmentRead               AuditAction = "attachment_read"
+	AttachmentReextractRequested AuditAction = "attachment_reextract_requested"
+	AttachmentRemoved            AuditAction = "attachment_removed"
+	AttachmentSensitivityRaised  AuditAction = "attachment_sensitivity_raised"
+	AttachmentTextCorrected      AuditAction = "attachment_text_corrected"
+	CustomFieldChoiceAdded       AuditAction = "custom_field_choice_added"
+	CustomFieldChoiceRemoved     AuditAction = "custom_field_choice_removed"
+	CustomFieldCreated           AuditAction = "custom_field_created"
+	CustomFieldRemoved           AuditAction = "custom_field_removed"
+	CustomFieldRenamed           AuditAction = "custom_field_renamed"
+	LookupCreated                AuditAction = "lookup_created"
+	LookupRemoved                AuditAction = "lookup_removed"
+	LookupRenamed                AuditAction = "lookup_renamed"
+	PasswordChanged              AuditAction = "password_changed"
+	PasswordReset                AuditAction = "password_reset"
+	PropertyArchived             AuditAction = "property_archived"
+	PropertyCodeChanged          AuditAction = "property_code_changed"
+	PropertyCreated              AuditAction = "property_created"
+	PropertyModified             AuditAction = "property_modified"
+	PropertyRestored             AuditAction = "property_restored"
+	RecordReverted               AuditAction = "record_reverted"
+	SessionsInvalidated          AuditAction = "sessions_invalidated"
+	SignInFailed                 AuditAction = "sign_in_failed"
+	SignInSucceeded              AuditAction = "sign_in_succeeded"
+	SignOut                      AuditAction = "sign_out"
 )
 
 // Valid indicates whether the value is a known member of the AuditAction enum.
@@ -50,9 +116,51 @@ func (e AuditAction) Valid() bool {
 		return true
 	case AdminRecoveryUsed:
 		return true
+	case AttachmentAdded:
+		return true
+	case AttachmentDescribed:
+		return true
+	case AttachmentRead:
+		return true
+	case AttachmentReextractRequested:
+		return true
+	case AttachmentRemoved:
+		return true
+	case AttachmentSensitivityRaised:
+		return true
+	case AttachmentTextCorrected:
+		return true
+	case CustomFieldChoiceAdded:
+		return true
+	case CustomFieldChoiceRemoved:
+		return true
+	case CustomFieldCreated:
+		return true
+	case CustomFieldRemoved:
+		return true
+	case CustomFieldRenamed:
+		return true
+	case LookupCreated:
+		return true
+	case LookupRemoved:
+		return true
+	case LookupRenamed:
+		return true
 	case PasswordChanged:
 		return true
 	case PasswordReset:
+		return true
+	case PropertyArchived:
+		return true
+	case PropertyCodeChanged:
+		return true
+	case PropertyCreated:
+		return true
+	case PropertyModified:
+		return true
+	case PropertyRestored:
+		return true
+	case RecordReverted:
 		return true
 	case SessionsInvalidated:
 		return true
@@ -67,25 +175,92 @@ func (e AuditAction) Valid() bool {
 	}
 }
 
+// Defines values for AuditRecordEntityType.
+const (
+	AuditRecordEntityTypeArea         AuditRecordEntityType = "area"
+	AuditRecordEntityTypeAttachment   AuditRecordEntityType = "attachment"
+	AuditRecordEntityTypeCustomField  AuditRecordEntityType = "custom_field"
+	AuditRecordEntityTypeLessThannil  AuditRecordEntityType = "<nil>"
+	AuditRecordEntityTypeProperty     AuditRecordEntityType = "property"
+	AuditRecordEntityTypePropertyType AuditRecordEntityType = "property_type"
+)
+
+// Valid indicates whether the value is a known member of the AuditRecordEntityType enum.
+func (e AuditRecordEntityType) Valid() bool {
+	switch e {
+	case AuditRecordEntityTypeArea:
+		return true
+	case AuditRecordEntityTypeAttachment:
+		return true
+	case AuditRecordEntityTypeCustomField:
+		return true
+	case AuditRecordEntityTypeLessThannil:
+		return true
+	case AuditRecordEntityTypeProperty:
+		return true
+	case AuditRecordEntityTypePropertyType:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CustomFieldType.
+const (
+	Checkbox    CustomFieldType = "checkbox"
+	Dropdown    CustomFieldType = "dropdown"
+	Multiselect CustomFieldType = "multiselect"
+	Text        CustomFieldType = "text"
+)
+
+// Valid indicates whether the value is a known member of the CustomFieldType enum.
+func (e CustomFieldType) Valid() bool {
+	switch e {
+	case Checkbox:
+		return true
+	case Dropdown:
+		return true
+	case Multiselect:
+		return true
+	case Text:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ErrorCode.
 const (
+	ErrorCodeArchived               ErrorCode = "archived"
 	ErrorCodeConflict               ErrorCode = "conflict"
 	ErrorCodeForbidden              ErrorCode = "forbidden"
+	ErrorCodeInUse                  ErrorCode = "in_use"
+	ErrorCodeIntegrityFailed        ErrorCode = "integrity_failed"
 	ErrorCodeInternalError          ErrorCode = "internal_error"
 	ErrorCodeInvalidCredentials     ErrorCode = "invalid_credentials"
 	ErrorCodeInvalidRequest         ErrorCode = "invalid_request"
+	ErrorCodeKeyUnavailable         ErrorCode = "key_unavailable"
 	ErrorCodeNotAuthenticated       ErrorCode = "not_authenticated"
 	ErrorCodeNotFound               ErrorCode = "not_found"
 	ErrorCodePasswordChangeRequired ErrorCode = "password_change_required"
+	ErrorCodeTooLarge               ErrorCode = "too_large"
 	ErrorCodeTooSoon                ErrorCode = "too_soon"
+	ErrorCodeUnsupportedType        ErrorCode = "unsupported_type"
+	ErrorCodeVersionConflict        ErrorCode = "version_conflict"
 )
 
 // Valid indicates whether the value is a known member of the ErrorCode enum.
 func (e ErrorCode) Valid() bool {
 	switch e {
+	case ErrorCodeArchived:
+		return true
 	case ErrorCodeConflict:
 		return true
 	case ErrorCodeForbidden:
+		return true
+	case ErrorCodeInUse:
+		return true
+	case ErrorCodeIntegrityFailed:
 		return true
 	case ErrorCodeInternalError:
 		return true
@@ -93,13 +268,51 @@ func (e ErrorCode) Valid() bool {
 		return true
 	case ErrorCodeInvalidRequest:
 		return true
+	case ErrorCodeKeyUnavailable:
+		return true
 	case ErrorCodeNotAuthenticated:
 		return true
 	case ErrorCodeNotFound:
 		return true
 	case ErrorCodePasswordChangeRequired:
 		return true
+	case ErrorCodeTooLarge:
+		return true
 	case ErrorCodeTooSoon:
+		return true
+	case ErrorCodeUnsupportedType:
+		return true
+	case ErrorCodeVersionConflict:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ExtractState.
+const (
+	ExtractStateDone        ExtractState = "done"
+	ExtractStateEmpty       ExtractState = "empty"
+	ExtractStateFailed      ExtractState = "failed"
+	ExtractStateNotEligible ExtractState = "not_eligible"
+	ExtractStatePending     ExtractState = "pending"
+	ExtractStateTooLarge    ExtractState = "too_large"
+)
+
+// Valid indicates whether the value is a known member of the ExtractState enum.
+func (e ExtractState) Valid() bool {
+	switch e {
+	case ExtractStateDone:
+		return true
+	case ExtractStateEmpty:
+		return true
+	case ExtractStateFailed:
+		return true
+	case ExtractStateNotEligible:
+		return true
+	case ExtractStatePending:
+		return true
+	case ExtractStateTooLarge:
 		return true
 	default:
 		return false
@@ -124,25 +337,89 @@ func (e Role) Valid() bool {
 	}
 }
 
+// Defines values for SearchOperator.
+const (
+	Contains    SearchOperator = "contains"
+	Equals      SearchOperator = "equals"
+	IncludesAll SearchOperator = "includesAll"
+	IsFalse     SearchOperator = "isFalse"
+	IsTrue      SearchOperator = "isTrue"
+)
+
+// Valid indicates whether the value is a known member of the SearchOperator enum.
+func (e SearchOperator) Valid() bool {
+	switch e {
+	case Contains:
+		return true
+	case Equals:
+		return true
+	case IncludesAll:
+		return true
+	case IsFalse:
+		return true
+	case IsTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchDocumentsJSONBodyPageSize.
+const (
+	SearchDocumentsJSONBodyPageSizeN10  SearchDocumentsJSONBodyPageSize = 10
+	SearchDocumentsJSONBodyPageSizeN100 SearchDocumentsJSONBodyPageSize = 100
+	SearchDocumentsJSONBodyPageSizeN25  SearchDocumentsJSONBodyPageSize = 25
+	SearchDocumentsJSONBodyPageSizeN50  SearchDocumentsJSONBodyPageSize = 50
+)
+
+// Valid indicates whether the value is a known member of the SearchDocumentsJSONBodyPageSize enum.
+func (e SearchDocumentsJSONBodyPageSize) Valid() bool {
+	switch e {
+	case SearchDocumentsJSONBodyPageSizeN10:
+		return true
+	case SearchDocumentsJSONBodyPageSizeN100:
+		return true
+	case SearchDocumentsJSONBodyPageSizeN25:
+		return true
+	case SearchDocumentsJSONBodyPageSizeN50:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SignIn429JSONResponseBodyCode.
 const (
+	SignIn429JSONResponseBodyCodeArchived               SignIn429JSONResponseBodyCode = "archived"
 	SignIn429JSONResponseBodyCodeConflict               SignIn429JSONResponseBodyCode = "conflict"
 	SignIn429JSONResponseBodyCodeForbidden              SignIn429JSONResponseBodyCode = "forbidden"
+	SignIn429JSONResponseBodyCodeInUse                  SignIn429JSONResponseBodyCode = "in_use"
+	SignIn429JSONResponseBodyCodeIntegrityFailed        SignIn429JSONResponseBodyCode = "integrity_failed"
 	SignIn429JSONResponseBodyCodeInternalError          SignIn429JSONResponseBodyCode = "internal_error"
 	SignIn429JSONResponseBodyCodeInvalidCredentials     SignIn429JSONResponseBodyCode = "invalid_credentials"
 	SignIn429JSONResponseBodyCodeInvalidRequest         SignIn429JSONResponseBodyCode = "invalid_request"
+	SignIn429JSONResponseBodyCodeKeyUnavailable         SignIn429JSONResponseBodyCode = "key_unavailable"
 	SignIn429JSONResponseBodyCodeNotAuthenticated       SignIn429JSONResponseBodyCode = "not_authenticated"
 	SignIn429JSONResponseBodyCodeNotFound               SignIn429JSONResponseBodyCode = "not_found"
 	SignIn429JSONResponseBodyCodePasswordChangeRequired SignIn429JSONResponseBodyCode = "password_change_required"
+	SignIn429JSONResponseBodyCodeTooLarge               SignIn429JSONResponseBodyCode = "too_large"
 	SignIn429JSONResponseBodyCodeTooSoon                SignIn429JSONResponseBodyCode = "too_soon"
+	SignIn429JSONResponseBodyCodeUnsupportedType        SignIn429JSONResponseBodyCode = "unsupported_type"
+	SignIn429JSONResponseBodyCodeVersionConflict        SignIn429JSONResponseBodyCode = "version_conflict"
 )
 
 // Valid indicates whether the value is a known member of the SignIn429JSONResponseBodyCode enum.
 func (e SignIn429JSONResponseBodyCode) Valid() bool {
 	switch e {
+	case SignIn429JSONResponseBodyCodeArchived:
+		return true
 	case SignIn429JSONResponseBodyCodeConflict:
 		return true
 	case SignIn429JSONResponseBodyCodeForbidden:
+		return true
+	case SignIn429JSONResponseBodyCodeInUse:
+		return true
+	case SignIn429JSONResponseBodyCodeIntegrityFailed:
 		return true
 	case SignIn429JSONResponseBodyCodeInternalError:
 		return true
@@ -150,13 +427,21 @@ func (e SignIn429JSONResponseBodyCode) Valid() bool {
 		return true
 	case SignIn429JSONResponseBodyCodeInvalidRequest:
 		return true
+	case SignIn429JSONResponseBodyCodeKeyUnavailable:
+		return true
 	case SignIn429JSONResponseBodyCodeNotAuthenticated:
 		return true
 	case SignIn429JSONResponseBodyCodeNotFound:
 		return true
 	case SignIn429JSONResponseBodyCodePasswordChangeRequired:
 		return true
+	case SignIn429JSONResponseBodyCodeTooLarge:
+		return true
 	case SignIn429JSONResponseBodyCodeTooSoon:
+		return true
+	case SignIn429JSONResponseBodyCodeUnsupportedType:
+		return true
+	case SignIn429JSONResponseBodyCodeVersionConflict:
 		return true
 	default:
 		return false
@@ -178,12 +463,132 @@ func (e GetHealth200JSONResponseBodyStatus) Valid() bool {
 	}
 }
 
+// Defines values for ListPropertiesParamsPageSize.
+const (
+	ListPropertiesParamsPageSizeN10  ListPropertiesParamsPageSize = 10
+	ListPropertiesParamsPageSizeN100 ListPropertiesParamsPageSize = 100
+	ListPropertiesParamsPageSizeN25  ListPropertiesParamsPageSize = 25
+	ListPropertiesParamsPageSizeN50  ListPropertiesParamsPageSize = 50
+)
+
+// Valid indicates whether the value is a known member of the ListPropertiesParamsPageSize enum.
+func (e ListPropertiesParamsPageSize) Valid() bool {
+	switch e {
+	case ListPropertiesParamsPageSizeN10:
+		return true
+	case ListPropertiesParamsPageSizeN100:
+		return true
+	case ListPropertiesParamsPageSizeN25:
+		return true
+	case ListPropertiesParamsPageSizeN50:
+		return true
+	default:
+		return false
+	}
+}
+
+// AdvancedSearch defines model for AdvancedSearch.
+type AdvancedSearch struct {
+	AreaId *openapi_types.UUID `json:"areaId,omitempty"`
+
+	// AttachmentName Matches an attachment's description or its original filename, after the
+	// same Arabic normalisation as property names. Unlike `documentText`, this
+	// searches **sensitive attachments too**: sensitivity conceals a document's
+	// contents, never its existence or its description (FR-022d).
+	AttachmentName *string              `json:"attachmentName,omitempty"`
+	CustomFilters  *[]CustomFieldFilter `json:"customFilters,omitempty"`
+
+	// DocumentText Matches text extracted from the property's attachments, after the same
+	// Arabic normalisation as the name. Sensitive attachments are never
+	// searched, for any role (FR-022b, FR-029). Combines with every other
+	// filter by AND, like all the rest.
+	DocumentText *string `json:"documentText,omitempty"`
+
+	// HasAttachments `yes` returns only properties that hold at least one attachment, `no` only
+	// those that hold none, `any` does not constrain. Combines with every other
+	// filter by AND.
+	HasAttachments  *AdvancedSearchHasAttachments `json:"hasAttachments,omitempty"`
+	IncludeArchived *bool                         `json:"includeArchived,omitempty"`
+	Page            *int                          `json:"page,omitempty"`
+	PageSize        *AdvancedSearchPageSize       `json:"pageSize,omitempty"`
+	PropertyTypeId  *openapi_types.UUID           `json:"propertyTypeId,omitempty"`
+	Q               *string                       `json:"q,omitempty"`
+}
+
+// AdvancedSearchHasAttachments `yes` returns only properties that hold at least one attachment, `no` only
+// those that hold none, `any` does not constrain. Combines with every other
+// filter by AND.
+type AdvancedSearchHasAttachments string
+
+// AdvancedSearchPageSize defines model for AdvancedSearch.PageSize.
+type AdvancedSearchPageSize int
+
+// Attachment defines model for Attachment.
+type Attachment struct {
+	ByteSize int64 `json:"byteSize"`
+
+	// CanViewInline True for `pdf` and images. False means the client offers a download instead of
+	// a viewer (FR-013c).
+	CanViewInline bool `json:"canViewInline"`
+
+	// ContentType Determined from content
+	ContentType string    `json:"contentType"`
+	CreatedAt   time.Time `json:"createdAt"`
+	CreatedBy   string    `json:"createdBy"`
+	Description string    `json:"description"`
+
+	// ExtractError A reason code. Never any part of the document's content.
+	ExtractError *string `json:"extractError,omitempty"`
+
+	// ExtractState `empty` and `not_eligible` are normal outcomes, not errors. `not_eligible` also
+	// covers a document whose family needs a tool that is not installed (research.md
+	// D-012), which the client reports in Arabic rather than as a failure.
+	ExtractState ExtractState       `json:"extractState"`
+	Id           openapi_types.UUID `json:"id"`
+
+	// IsSensitive True means the extracted text is encrypted and never searched. May be raised,
+	// never lowered.
+	IsSensitive      bool               `json:"isSensitive"`
+	OriginalFilename string             `json:"originalFilename"`
+	PropertyId       openapi_types.UUID `json:"propertyId"`
+	UpdatedAt        *time.Time         `json:"updatedAt,omitempty"`
+	UpdatedBy        *string            `json:"updatedBy,omitempty"`
+}
+
+// AttachmentText defines model for AttachmentText.
+type AttachmentText struct {
+	AttachmentId openapi_types.UUID `json:"attachmentId"`
+
+	// Body Absent when extraction found nothing or has not run. For a sensitive attachment
+	// this is the decrypted text, returned only after the role check.
+	Body        *string    `json:"body,omitempty"`
+	CorrectedAt *time.Time `json:"correctedAt,omitempty"`
+	CorrectedBy *string    `json:"correctedBy,omitempty"`
+	ExtractedAt *time.Time `json:"extractedAt,omitempty"`
+	IsCorrected bool       `json:"isCorrected"`
+
+	// Truncated True when the document produced more text than the configured cap, so a phrase
+	// past the cut will not be found (FR-021).
+	Truncated bool `json:"truncated"`
+}
+
 // AuditAction defines model for AuditAction.
 type AuditAction string
 
-// AuditRecord A record is never rewritten. The snapshot fields show accounts as they were named
-// when the action happened, even if renamed since. Never contains a password or any
-// decrypted value (FR-025).
+// AuditRecord A record is never rewritten. The snapshot fields show accounts as they were
+// named when the action happened, even if renamed since. Never contains a
+// password, a decrypted value, a key, or a wrapped key (Constitution VII).
+//
+// `before` and `after` contain only fields whose values differ. Values
+// appear ONLY for fields stored unencrypted at rest. A row whose change
+// touched a sensitive field, an attachment's extracted text, or any other
+// encrypted column records that the field changed and records neither
+// value (Constitution VIII as amended in v1.4.0).
+//
+// `reversesAuditId` names the record this one reverses when the action is
+// `record_reverted`. `revertedByAuditId` names the record that reversed
+// this one, if any. The two halves of an undo pair are both visible —
+// the log gains a reversal, never an erasure.
 type AuditRecord struct {
 	Action AuditAction `json:"action"`
 
@@ -192,31 +597,161 @@ type AuditRecord struct {
 	ActorRole     *Role               `json:"actorRole,omitempty"`
 	ActorUsername string              `json:"actorUsername"`
 
+	// After Only values that changed, as they were after the change, with the
+	// same restrictions as `before`. Absent for actions that have no useful
+	// post state (the deletion of an attachment).
+	After *map[string]interface{} `json:"after,omitempty"`
+
+	// Before Only values that changed, as they were before the change, keyed by
+	// field name. Fields stored encrypted at rest are absent (or marked as
+	// having changed) — never recorded as their decrypted value. Absent for
+	// actions that have no useful prior state (creates, attachment reads).
+	Before *map[string]interface{} `json:"before,omitempty"`
+
 	// Detail Field names and identifiers only.
-	Detail         *map[string]interface{} `json:"detail,omitempty"`
-	Id             int64                   `json:"id"`
-	OccurredAt     time.Time               `json:"occurredAt"`
-	SourceIp       string                  `json:"sourceIp"`
-	TargetId       *openapi_types.UUID     `json:"targetId,omitempty"`
-	TargetUsername *string                 `json:"targetUsername,omitempty"`
+	Detail *map[string]interface{} `json:"detail,omitempty"`
+
+	// EntityId The identifier of that record (a reference code for a property).
+	EntityId *string `json:"entityId,omitempty"`
+
+	// EntityType The kind of business record this row concerns, when any.
+	EntityType *AuditRecordEntityType `json:"entityType,omitempty"`
+	Id         int64                  `json:"id"`
+	OccurredAt time.Time              `json:"occurredAt"`
+
+	// ReversesAuditId For an action `record_reverted`, the id of the audit record this
+	// one reverses. Null otherwise. The reversed record stays visible;
+	// the log gains a reversal, never an erasure.
+	ReversesAuditId *int64 `json:"reversesAuditId,omitempty"`
+
+	// RevertedByAuditId For a record that has been undone, the id of the `record_reverted`
+	// row that undid it. Null otherwise. The two halves of an undo pair
+	// appear side by side on the records screen.
+	RevertedByAuditId *int64              `json:"revertedByAuditId,omitempty"`
+	SourceIp          string              `json:"sourceIp"`
+	TargetId          *openapi_types.UUID `json:"targetId,omitempty"`
+	TargetUsername    *string             `json:"targetUsername,omitempty"`
 }
 
-// CurrentUser The caller as they stand on this request. `mustChangePassword` true means the
-// client must send the user to the password-change screen and no other (FR-007,
-// FR-010).
+// AuditRecordEntityType The kind of business record this row concerns, when any.
+type AuditRecordEntityType string
+
+// CurrentUser The caller as they stand on this request. `mustChangePassword` true means
+// the client must send the user to the password-change screen and no other.
 type CurrentUser struct {
 	DisplayName        string             `json:"displayName"`
 	Id                 openapi_types.UUID `json:"id"`
 	MustChangePassword bool               `json:"mustChangePassword"`
 
-	// Role Exactly two roles exist (FR-002).
+	// Role Exactly two roles exist.
 	Role     Role   `json:"role"`
 	Username string `json:"username"`
 }
 
+// CustomField defines model for CustomField.
+type CustomField struct {
+	Choices   []CustomFieldChoice `json:"choices"`
+	FieldType CustomFieldType     `json:"fieldType"`
+	Id        openapi_types.UUID  `json:"id"`
+
+	// IsSensitive True only for a `text` field. Its values are encrypted at rest and it
+	// cannot be searched, sorted, or filtered (Constitution VII).
+	IsSensitive bool   `json:"isSensitive"`
+	Label       string `json:"label"`
+
+	// ValuesCount Number of properties (active or archived) holding a value for this
+	// field. Sensitivity and type are fixed once this is non-zero
+	// (FR-027s5, FR-027g). Always zero for fields created in this response.
+	ValuesCount *int `json:"valuesCount,omitempty"`
+}
+
+// CustomFieldChoice defines model for CustomFieldChoice.
+type CustomFieldChoice struct {
+	Id    openapi_types.UUID `json:"id"`
+	Label string             `json:"label"`
+}
+
+// CustomFieldCreate defines model for CustomFieldCreate.
+type CustomFieldCreate struct {
+	Choices     *[]string       `json:"choices,omitempty"`
+	FieldType   CustomFieldType `json:"fieldType"`
+	IsSensitive *bool           `json:"isSensitive,omitempty"`
+	Label       string          `json:"label"`
+}
+
+// CustomFieldFilter defines model for CustomFieldFilter.
+type CustomFieldFilter struct {
+	ChoiceId  *openapi_types.UUID   `json:"choiceId,omitempty"`
+	ChoiceIds *[]openapi_types.UUID `json:"choiceIds,omitempty"`
+	FieldId   openapi_types.UUID    `json:"fieldId"`
+
+	// Operator `contains` suits text; `equals` a dropdown; `includesAll` a multiselect;
+	// `isTrue`/`isFalse` a checkbox. The server checks the pairing and refuses a
+	// mismatch with 400.
+	Operator SearchOperator `json:"operator"`
+	Text     *string        `json:"text,omitempty"`
+}
+
+// CustomFieldType defines model for CustomFieldType.
+type CustomFieldType string
+
+// CustomFieldUpdate defines model for CustomFieldUpdate.
+type CustomFieldUpdate struct {
+	AddChoices      *[]string             `json:"addChoices,omitempty"`
+	Label           string                `json:"label"`
+	RemoveChoiceIds *[]openapi_types.UUID `json:"removeChoiceIds,omitempty"`
+}
+
+// CustomFieldValue Exactly one of the value members is present, matching the field's type. A
+// sensitive field's value arrives here decrypted, and only on the property
+// detail — never in a list or a search result.
+type CustomFieldValue struct {
+	Checked   *bool                 `json:"checked,omitempty"`
+	ChoiceId  *openapi_types.UUID   `json:"choiceId,omitempty"`
+	ChoiceIds *[]openapi_types.UUID `json:"choiceIds,omitempty"`
+	FieldId   openapi_types.UUID    `json:"fieldId"`
+	Text      *string               `json:"text,omitempty"`
+}
+
+// DashboardCounts defines model for DashboardCounts.
+type DashboardCounts struct {
+	AreasTotal int `json:"areasTotal"`
+
+	// AttachmentsPending Attachments whose extraction state is `pending`.
+	AttachmentsPending int `json:"attachmentsPending"`
+	AttachmentsTotal   int `json:"attachmentsTotal"`
+	CustomFieldsTotal  int `json:"customFieldsTotal"`
+	PropertiesActive   int `json:"propertiesActive"`
+	PropertiesArchived int `json:"propertiesArchived"`
+	PropertiesTotal    int `json:"propertiesTotal"`
+	PropertyTypesTotal int `json:"propertyTypesTotal"`
+}
+
+// DocumentSearchHit defines model for DocumentSearchHit.
+type DocumentSearchHit struct {
+	AttachmentDescription string             `json:"attachmentDescription"`
+	AttachmentId          openapi_types.UUID `json:"attachmentId"`
+	PropertyCode          string             `json:"propertyCode"`
+	PropertyId            openapi_types.UUID `json:"propertyId"`
+	PropertyName          string             `json:"propertyName"`
+}
+
+// DocumentSearchPage defines model for DocumentSearchPage.
+type DocumentSearchPage struct {
+	Items    []DocumentSearchHit `json:"items"`
+	Page     int                 `json:"page"`
+	PageSize int                 `json:"pageSize"`
+
+	// SensitiveExcluded Always true. Present so the client can state in Arabic that sensitive documents
+	// are not searched, rather than silently returning fewer results (FR-022b).
+	SensitiveExcluded bool `json:"sensitiveExcluded"`
+	TotalItems        int  `json:"totalItems"`
+}
+
 // Error The single error shape used by every operation in this document
-// (Constitution III). `message` is Arabic and states what the user should do next
-// (FR-027). It never carries internal failure detail (FR-028).
+// (Constitution III). `message` is Arabic and states what the user should do
+// next. It never carries internal failure detail, a key, a wrapped key, or a
+// decrypted value (Constitution VII).
 type Error struct {
 	Code ErrorCode `json:"code"`
 
@@ -225,13 +760,165 @@ type Error struct {
 
 	// Message Arabic, user-facing.
 	Message string `json:"message"`
+
+	// RetryAfterSeconds Seconds remaining before another attempt is accepted (sign-in throttling).
+	RetryAfterSeconds *int `json:"retryAfterSeconds,omitempty"`
 }
 
 // ErrorCode defines model for Error.Code.
 type ErrorCode string
 
-// Role Exactly two roles exist (FR-002).
+// ExtractState `empty` and `not_eligible` are normal outcomes, not errors. `not_eligible` also
+// covers a document whose family needs a tool that is not installed (research.md
+// D-012), which the client reports in Arabic rather than as a failure.
+type ExtractState string
+
+// Lookup defines model for Lookup.
+type Lookup struct {
+	Id    openapi_types.UUID `json:"id"`
+	Label string             `json:"label"`
+}
+
+// LookupWrite defines model for LookupWrite.
+type LookupWrite struct {
+	Label string `json:"label"`
+}
+
+// Property defines model for Property.
+type Property struct {
+	ArchiveNote *string    `json:"archiveNote,omitempty"`
+	ArchivedAt  *time.Time `json:"archivedAt,omitempty"`
+	ArchivedBy  *string    `json:"archivedBy,omitempty"`
+	Area        Lookup     `json:"area"`
+
+	// Code Unique across the register, active and archived alike, compared after
+	// trimming, case folding, and Arabic normalisation. Never reused.
+	Code       PropertyCode       `json:"code"`
+	CreatedAt  time.Time          `json:"createdAt"`
+	CreatedBy  string             `json:"createdBy"`
+	Id         openapi_types.UUID `json:"id"`
+	IsArchived bool               `json:"isArchived"`
+
+	// MatchedAttachments Present only when `documentText` was part of the search. Names the
+	// attachments whose extracted text matched, so a hit says *why* it
+	// matched rather than only *that* it did (FR-026).
+	MatchedAttachments *[]struct {
+		Description string             `json:"description"`
+		Id          openapi_types.UUID `json:"id"`
+	} `json:"matchedAttachments,omitempty"`
+
+	// Name Descriptive, not identifying. Two properties may share a name.
+	Name         PropertyName `json:"name"`
+	PropertyType Lookup       `json:"propertyType"`
+	UpdatedAt    time.Time    `json:"updatedAt"`
+	UpdatedBy    string       `json:"updatedBy"`
+	Version      int          `json:"version"`
+}
+
+// PropertyCode Unique across the register, active and archived alike, compared after
+// trimming, case folding, and Arabic normalisation. Never reused.
+type PropertyCode = string
+
+// PropertyCreate defines model for PropertyCreate.
+type PropertyCreate struct {
+	AreaId openapi_types.UUID `json:"areaId"`
+
+	// Code Administrator only. A manager supplying it is refused with 403. Omitted,
+	// the server generates the next code.
+	Code         *PropertyCode       `json:"code,omitempty"`
+	CustomValues *[]CustomFieldValue `json:"customValues,omitempty"`
+
+	// Name Descriptive, not identifying. Two properties may share a name.
+	Name PropertyName `json:"name"`
+
+	// PropertyTypeId Must name a configured type; a free-typed value is impossible.
+	PropertyTypeId openapi_types.UUID `json:"propertyTypeId"`
+}
+
+// PropertyDetail defines model for PropertyDetail.
+type PropertyDetail struct {
+	ArchiveNote *string    `json:"archiveNote,omitempty"`
+	ArchivedAt  *time.Time `json:"archivedAt,omitempty"`
+	ArchivedBy  *string    `json:"archivedBy,omitempty"`
+	Area        Lookup     `json:"area"`
+
+	// Code Unique across the register, active and archived alike, compared after
+	// trimming, case folding, and Arabic normalisation. Never reused.
+	Code         PropertyCode       `json:"code"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	CreatedBy    string             `json:"createdBy"`
+	CustomValues []CustomFieldValue `json:"customValues"`
+	Id           openapi_types.UUID `json:"id"`
+	IsArchived   bool               `json:"isArchived"`
+
+	// MatchedAttachments Present only when `documentText` was part of the search. Names the
+	// attachments whose extracted text matched, so a hit says *why* it
+	// matched rather than only *that* it did (FR-026).
+	MatchedAttachments *[]struct {
+		Description string             `json:"description"`
+		Id          openapi_types.UUID `json:"id"`
+	} `json:"matchedAttachments,omitempty"`
+
+	// Name Descriptive, not identifying. Two properties may share a name.
+	Name         PropertyName `json:"name"`
+	PropertyType Lookup       `json:"propertyType"`
+	UpdatedAt    time.Time    `json:"updatedAt"`
+	UpdatedBy    string       `json:"updatedBy"`
+	Version      int          `json:"version"`
+}
+
+// PropertyName Descriptive, not identifying. Two properties may share a name.
+type PropertyName = string
+
+// PropertyPage defines model for PropertyPage.
+type PropertyPage struct {
+	Items      []PropertySummary `json:"items"`
+	Page       int               `json:"page"`
+	PageSize   int               `json:"pageSize"`
+	TotalItems int               `json:"totalItems"`
+}
+
+// PropertySummary One row of the list. Custom values are not included here.
+type PropertySummary struct {
+	Area Lookup `json:"area"`
+
+	// Code Unique across the register, active and archived alike, compared after
+	// trimming, case folding, and Arabic normalisation. Never reused.
+	Code       PropertyCode       `json:"code"`
+	Id         openapi_types.UUID `json:"id"`
+	IsArchived bool               `json:"isArchived"`
+
+	// MatchedAttachments Present only when `documentText` was part of the search. Names the
+	// attachments whose extracted text matched, so a hit says *why* it
+	// matched rather than only *that* it did (FR-026).
+	MatchedAttachments *[]struct {
+		Description string             `json:"description"`
+		Id          openapi_types.UUID `json:"id"`
+	} `json:"matchedAttachments,omitempty"`
+
+	// Name Descriptive, not identifying. Two properties may share a name.
+	Name         PropertyName `json:"name"`
+	PropertyType Lookup       `json:"propertyType"`
+}
+
+// PropertyUpdate defines model for PropertyUpdate.
+type PropertyUpdate struct {
+	AreaId       openapi_types.UUID  `json:"areaId"`
+	CustomValues *[]CustomFieldValue `json:"customValues,omitempty"`
+
+	// Name Descriptive, not identifying. Two properties may share a name.
+	Name           PropertyName       `json:"name"`
+	PropertyTypeId openapi_types.UUID `json:"propertyTypeId"`
+	Version        int                `json:"version"`
+}
+
+// Role Exactly two roles exist.
 type Role string
+
+// SearchOperator `contains` suits text; `equals` a dropdown; `includesAll` a multiselect;
+// `isTrue`/`isFalse` a checkbox. The server checks the pairing and refuses a
+// mismatch with 400.
+type SearchOperator string
 
 // User defines model for User.
 type User struct {
@@ -241,24 +928,20 @@ type User struct {
 	IsActive           bool               `json:"isActive"`
 	MustChangePassword bool               `json:"mustChangePassword"`
 
-	// Role Exactly two roles exist (FR-002).
+	// Role Exactly two roles exist.
 	Role      Role       `json:"role"`
 	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
-
-	// Username Arabic letters, Latin letters, Western digits, dot, underscore, or hyphen
-	// (FR-036). Stored as typed and displayed as typed (FR-039); matched after
-	// canonicalization, so case and Arabic letter variants do not create a second
-	// account (FR-038). Invisible and bidirectional control characters are refused
-	// (FR-037). Eastern Arabic digits are converted to Western on entry (FR-033).
-	Username Username `json:"username"`
+	Username  string     `json:"username"`
 }
 
-// Username Arabic letters, Latin letters, Western digits, dot, underscore, or hyphen
-// (FR-036). Stored as typed and displayed as typed (FR-039); matched after
-// canonicalization, so case and Arabic letter variants do not create a second
-// account (FR-038). Invisible and bidirectional control characters are refused
-// (FR-037). Eastern Arabic digits are converted to Western on entry (FR-033).
-type Username = string
+// AttachmentId defines model for AttachmentId.
+type AttachmentId = openapi_types.UUID
+
+// FieldId defines model for FieldId.
+type FieldId = openapi_types.UUID
+
+// LookupId defines model for LookupId.
+type LookupId = openapi_types.UUID
 
 // Page defines model for Page.
 type Page = int
@@ -266,8 +949,43 @@ type Page = int
 // PageSize defines model for PageSize.
 type PageSize = int
 
+// PropertyId defines model for PropertyId.
+type PropertyId = openapi_types.UUID
+
 // UserId defines model for UserId.
 type UserId = openapi_types.UUID
+
+// SearchDocumentsJSONBody defines parameters for SearchDocuments.
+type SearchDocumentsJSONBody struct {
+	IncludeArchived *bool                            `json:"includeArchived,omitempty"`
+	Page            *int                             `json:"page,omitempty"`
+	PageSize        *SearchDocumentsJSONBodyPageSize `json:"pageSize,omitempty"`
+
+	// Q Matched after the same Arabic normalisation as property names.
+	Q string `json:"q"`
+}
+
+// SearchDocumentsJSONBodyPageSize defines parameters for SearchDocuments.
+type SearchDocumentsJSONBodyPageSize int
+
+// UpdateAttachmentJSONBody defines parameters for UpdateAttachment.
+type UpdateAttachmentJSONBody struct {
+	Description *string `json:"description,omitempty"`
+	IsSensitive *bool   `json:"isSensitive,omitempty"`
+}
+
+// GetAttachmentContentParams defines parameters for GetAttachmentContent.
+type GetAttachmentContentParams struct {
+	// Disposition `inline` streams the document for viewing in the application and is honoured only
+	// for `pdf` and image types; everything else is served as an attachment whatever is
+	// asked for (FR-013c). Default is `attachment`.
+	Disposition *string `form:"disposition,omitempty" json:"disposition,omitempty"`
+}
+
+// CorrectAttachmentTextJSONBody defines parameters for CorrectAttachmentText.
+type CorrectAttachmentTextJSONBody struct {
+	Body string `json:"body"`
+}
 
 // ListAuditRecordsParams defines parameters for ListAuditRecords.
 type ListAuditRecordsParams struct {
@@ -308,6 +1026,58 @@ type ChangeOwnPasswordJSONBody struct {
 // GetHealth200JSONResponseBodyStatus defines parameters for GetHealth.
 type GetHealth200JSONResponseBodyStatus string
 
+// ListPropertiesParams defines parameters for ListProperties.
+type ListPropertiesParams struct {
+	Page     *int                          `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *ListPropertiesParamsPageSize `form:"pageSize,omitempty" json:"pageSize,omitempty"`
+
+	// Q Matched against name and reference code.
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+
+	// Code Column filter: substring match against the reference code after Arabic
+	// normalisation. Combines with every other filter by AND.
+	Code *string `form:"code,omitempty" json:"code,omitempty"`
+
+	// Name Column filter: substring match against the property name after Arabic
+	// normalisation. Combines with every other filter by AND.
+	Name            *string             `form:"name,omitempty" json:"name,omitempty"`
+	PropertyTypeId  *openapi_types.UUID `form:"propertyTypeId,omitempty" json:"propertyTypeId,omitempty"`
+	AreaId          *openapi_types.UUID `form:"areaId,omitempty" json:"areaId,omitempty"`
+	IncludeArchived *bool               `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
+}
+
+// ListPropertiesParamsPageSize defines parameters for ListProperties.
+type ListPropertiesParamsPageSize int
+
+// ArchivePropertyJSONBody defines parameters for ArchiveProperty.
+type ArchivePropertyJSONBody struct {
+	// Note Optional Arabic note explaining why the property is being
+	// archived. Shown on the detail while archived and in the
+	// audit row's detail; cleared on restore.
+	Note    *string `json:"note,omitempty"`
+	Version int     `json:"version"`
+}
+
+// UploadAttachmentMultipartBody defines parameters for UploadAttachment.
+type UploadAttachmentMultipartBody struct {
+	Description string             `json:"description"`
+	File        openapi_types.File `json:"file"`
+	IsSensitive *bool              `json:"isSensitive,omitempty"`
+}
+
+// ChangePropertyCodeJSONBody defines parameters for ChangePropertyCode.
+type ChangePropertyCodeJSONBody struct {
+	// Code Unique across the register, active and archived alike, compared after
+	// trimming, case folding, and Arabic normalisation. Never reused.
+	Code    PropertyCode `json:"code"`
+	Version int          `json:"version"`
+}
+
+// RestorePropertyJSONBody defines parameters for RestoreProperty.
+type RestorePropertyJSONBody struct {
+	Version int `json:"version"`
+}
+
 // ListUsersParams defines parameters for ListUsers.
 type ListUsersParams struct {
 	Page            *Page     `form:"page,omitempty" json:"page,omitempty"`
@@ -320,15 +1090,9 @@ type CreateUserJSONBody struct {
 	DisplayName     string `json:"displayName"`
 	InitialPassword string `json:"initialPassword"`
 
-	// Role Exactly two roles exist (FR-002).
-	Role Role `json:"role"`
-
-	// Username Arabic letters, Latin letters, Western digits, dot, underscore, or hyphen
-	// (FR-036). Stored as typed and displayed as typed (FR-039); matched after
-	// canonicalization, so case and Arabic letter variants do not create a second
-	// account (FR-038). Invisible and bidirectional control characters are refused
-	// (FR-037). Eastern Arabic digits are converted to Western on entry (FR-033).
-	Username Username `json:"username"`
+	// Role Exactly two roles exist.
+	Role     Role   `json:"role"`
+	Username string `json:"username"`
 }
 
 // UpdateUserJSONBody defines parameters for UpdateUser.
@@ -336,7 +1100,7 @@ type UpdateUserJSONBody struct {
 	DisplayName *string `json:"displayName,omitempty"`
 	IsActive    *bool   `json:"isActive,omitempty"`
 
-	// Role Exactly two roles exist (FR-002).
+	// Role Exactly two roles exist.
 	Role *Role `json:"role,omitempty"`
 }
 
@@ -345,11 +1109,59 @@ type ResetUserPasswordJSONBody struct {
 	NewPassword string `json:"newPassword"`
 }
 
+// CreateAreaJSONRequestBody defines body for CreateArea for application/json ContentType.
+type CreateAreaJSONRequestBody = LookupWrite
+
+// RenameAreaJSONRequestBody defines body for RenameArea for application/json ContentType.
+type RenameAreaJSONRequestBody = LookupWrite
+
+// SearchDocumentsJSONRequestBody defines body for SearchDocuments for application/json ContentType.
+type SearchDocumentsJSONRequestBody SearchDocumentsJSONBody
+
+// UpdateAttachmentJSONRequestBody defines body for UpdateAttachment for application/json ContentType.
+type UpdateAttachmentJSONRequestBody UpdateAttachmentJSONBody
+
+// CorrectAttachmentTextJSONRequestBody defines body for CorrectAttachmentText for application/json ContentType.
+type CorrectAttachmentTextJSONRequestBody CorrectAttachmentTextJSONBody
+
 // SignInJSONRequestBody defines body for SignIn for application/json ContentType.
 type SignInJSONRequestBody SignInJSONBody
 
 // ChangeOwnPasswordJSONRequestBody defines body for ChangeOwnPassword for application/json ContentType.
 type ChangeOwnPasswordJSONRequestBody ChangeOwnPasswordJSONBody
+
+// CreateCustomFieldJSONRequestBody defines body for CreateCustomField for application/json ContentType.
+type CreateCustomFieldJSONRequestBody = CustomFieldCreate
+
+// UpdateCustomFieldJSONRequestBody defines body for UpdateCustomField for application/json ContentType.
+type UpdateCustomFieldJSONRequestBody = CustomFieldUpdate
+
+// CreatePropertyJSONRequestBody defines body for CreateProperty for application/json ContentType.
+type CreatePropertyJSONRequestBody = PropertyCreate
+
+// SearchPropertiesJSONRequestBody defines body for SearchProperties for application/json ContentType.
+type SearchPropertiesJSONRequestBody = AdvancedSearch
+
+// UpdatePropertyJSONRequestBody defines body for UpdateProperty for application/json ContentType.
+type UpdatePropertyJSONRequestBody = PropertyUpdate
+
+// ArchivePropertyJSONRequestBody defines body for ArchiveProperty for application/json ContentType.
+type ArchivePropertyJSONRequestBody ArchivePropertyJSONBody
+
+// UploadAttachmentMultipartRequestBody defines body for UploadAttachment for multipart/form-data ContentType.
+type UploadAttachmentMultipartRequestBody UploadAttachmentMultipartBody
+
+// ChangePropertyCodeJSONRequestBody defines body for ChangePropertyCode for application/json ContentType.
+type ChangePropertyCodeJSONRequestBody ChangePropertyCodeJSONBody
+
+// RestorePropertyJSONRequestBody defines body for RestoreProperty for application/json ContentType.
+type RestorePropertyJSONRequestBody RestorePropertyJSONBody
+
+// CreatePropertyTypeJSONRequestBody defines body for CreatePropertyType for application/json ContentType.
+type CreatePropertyTypeJSONRequestBody = LookupWrite
+
+// RenamePropertyTypeJSONRequestBody defines body for RenamePropertyType for application/json ContentType.
+type RenamePropertyTypeJSONRequestBody = LookupWrite
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody CreateUserJSONBody
@@ -362,9 +1174,48 @@ type ResetUserPasswordJSONRequestBody ResetUserPasswordJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// ListAreas Every area
+	// (GET /areas)
+	ListAreas(w http.ResponseWriter, r *http.Request)
+	// CreateArea Add an area
+	// (POST /areas)
+	CreateArea(w http.ResponseWriter, r *http.Request)
+	// DeleteArea Remove an unused area
+	// (DELETE /areas/{lookupId})
+	DeleteArea(w http.ResponseWriter, r *http.Request, lookupId LookupId)
+	// RenameArea Rename an area
+	// (PUT /areas/{lookupId})
+	RenameArea(w http.ResponseWriter, r *http.Request, lookupId LookupId)
+	// SearchDocuments Find properties by what their documents say
+	// (POST /attachments/search)
+	SearchDocuments(w http.ResponseWriter, r *http.Request)
+	// DeleteAttachment Remove an attachment
+	// (DELETE /attachments/{attachmentId})
+	DeleteAttachment(w http.ResponseWriter, r *http.Request, attachmentId AttachmentId)
+	// GetAttachment One attachment's metadata
+	// (GET /attachments/{attachmentId})
+	GetAttachment(w http.ResponseWriter, r *http.Request, attachmentId AttachmentId)
+	// UpdateAttachment Change the description, or raise sensitivity
+	// (PATCH /attachments/{attachmentId})
+	UpdateAttachment(w http.ResponseWriter, r *http.Request, attachmentId AttachmentId)
+	// GetAttachmentContent The document itself, decrypted for this request only
+	// (GET /attachments/{attachmentId}/content)
+	GetAttachmentContent(w http.ResponseWriter, r *http.Request, attachmentId AttachmentId, params GetAttachmentContentParams)
+	// GetAttachmentText The text read out of this document
+	// (GET /attachments/{attachmentId}/text)
+	GetAttachmentText(w http.ResponseWriter, r *http.Request, attachmentId AttachmentId)
+	// CorrectAttachmentText Correct the extracted text
+	// (PUT /attachments/{attachmentId}/text)
+	CorrectAttachmentText(w http.ResponseWriter, r *http.Request, attachmentId AttachmentId)
+	// ReextractAttachmentText Try extraction again
+	// (POST /attachments/{attachmentId}/text/reextract)
+	ReextractAttachmentText(w http.ResponseWriter, r *http.Request, attachmentId AttachmentId)
 	// ListAuditRecords Read recorded actions
 	// (GET /audit-records)
 	ListAuditRecords(w http.ResponseWriter, r *http.Request, params ListAuditRecordsParams)
+	// UndoAuditRecord Reverse a recorded change
+	// (POST /audit-records/{recordId}/undo)
+	UndoAuditRecord(w http.ResponseWriter, r *http.Request, recordId int64)
 	// SignIn Sign in
 	// (POST /auth/login)
 	SignIn(w http.ResponseWriter, r *http.Request)
@@ -377,9 +1228,66 @@ type ServerInterface interface {
 	// ChangeOwnPassword Change your own password
 	// (POST /auth/password)
 	ChangeOwnPassword(w http.ResponseWriter, r *http.Request)
+	// ListCustomFields Every custom field definition
+	// (GET /custom-fields)
+	ListCustomFields(w http.ResponseWriter, r *http.Request)
+	// CreateCustomField Define a custom field
+	// (POST /custom-fields)
+	CreateCustomField(w http.ResponseWriter, r *http.Request)
+	// DeleteCustomField Remove a field no property uses
+	// (DELETE /custom-fields/{fieldId})
+	DeleteCustomField(w http.ResponseWriter, r *http.Request, fieldId FieldId)
+	// UpdateCustomField Rename a field, or change its choices
+	// (PUT /custom-fields/{fieldId})
+	UpdateCustomField(w http.ResponseWriter, r *http.Request, fieldId FieldId)
+	// GetDashboard Compact counts for the home screen
+	// (GET /dashboard)
+	GetDashboard(w http.ResponseWriter, r *http.Request)
 	// GetHealth Liveness check
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+	// ListProperties A page of the register
+	// (GET /properties)
+	ListProperties(w http.ResponseWriter, r *http.Request, params ListPropertiesParams)
+	// CreateProperty Add a property
+	// (POST /properties)
+	CreateProperty(w http.ResponseWriter, r *http.Request)
+	// SearchProperties Advanced search across built-in and custom fields
+	// (POST /properties/search)
+	SearchProperties(w http.ResponseWriter, r *http.Request)
+	// GetProperty One property with all of its fields
+	// (GET /properties/{propertyId})
+	GetProperty(w http.ResponseWriter, r *http.Request, propertyId PropertyId)
+	// UpdateProperty Modify a property
+	// (PUT /properties/{propertyId})
+	UpdateProperty(w http.ResponseWriter, r *http.Request, propertyId PropertyId)
+	// ArchiveProperty Archive a property
+	// (POST /properties/{propertyId}/archive)
+	ArchiveProperty(w http.ResponseWriter, r *http.Request, propertyId PropertyId)
+	// ListAttachments The documents held against a property
+	// (GET /properties/{propertyId}/attachments)
+	ListAttachments(w http.ResponseWriter, r *http.Request, propertyId PropertyId)
+	// UploadAttachment Attach a document
+	// (POST /properties/{propertyId}/attachments)
+	UploadAttachment(w http.ResponseWriter, r *http.Request, propertyId PropertyId)
+	// ChangePropertyCode Set a property's reference code
+	// (PATCH /properties/{propertyId}/code)
+	ChangePropertyCode(w http.ResponseWriter, r *http.Request, propertyId PropertyId)
+	// RestoreProperty Restore an archived property
+	// (POST /properties/{propertyId}/restore)
+	RestoreProperty(w http.ResponseWriter, r *http.Request, propertyId PropertyId)
+	// ListPropertyTypes Every property type
+	// (GET /property-types)
+	ListPropertyTypes(w http.ResponseWriter, r *http.Request)
+	// CreatePropertyType Add a property type
+	// (POST /property-types)
+	CreatePropertyType(w http.ResponseWriter, r *http.Request)
+	// DeletePropertyType Remove an unused property type
+	// (DELETE /property-types/{lookupId})
+	DeletePropertyType(w http.ResponseWriter, r *http.Request, lookupId LookupId)
+	// RenamePropertyType Rename a property type
+	// (PUT /property-types/{lookupId})
+	RenamePropertyType(w http.ResponseWriter, r *http.Request, lookupId LookupId)
 	// ListUsers List accounts
 	// (GET /users)
 	ListUsers(w http.ResponseWriter, r *http.Request, params ListUsersParams)
@@ -405,6 +1313,298 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListAreas operation middleware
+func (siw *ServerInterfaceWrapper) ListAreas(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAreas(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateArea operation middleware
+func (siw *ServerInterfaceWrapper) CreateArea(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateArea(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteArea operation middleware
+func (siw *ServerInterfaceWrapper) DeleteArea(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "lookupId" -------------
+	var lookupId LookupId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lookupId", r.PathValue("lookupId"), &lookupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lookupId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteArea(w, r, lookupId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RenameArea operation middleware
+func (siw *ServerInterfaceWrapper) RenameArea(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "lookupId" -------------
+	var lookupId LookupId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lookupId", r.PathValue("lookupId"), &lookupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lookupId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RenameArea(w, r, lookupId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchDocuments operation middleware
+func (siw *ServerInterfaceWrapper) SearchDocuments(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchDocuments(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAttachment operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAttachment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "attachmentId" -------------
+	var attachmentId AttachmentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "attachmentId", r.PathValue("attachmentId"), &attachmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "attachmentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAttachment(w, r, attachmentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAttachment operation middleware
+func (siw *ServerInterfaceWrapper) GetAttachment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "attachmentId" -------------
+	var attachmentId AttachmentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "attachmentId", r.PathValue("attachmentId"), &attachmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "attachmentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAttachment(w, r, attachmentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAttachment operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAttachment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "attachmentId" -------------
+	var attachmentId AttachmentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "attachmentId", r.PathValue("attachmentId"), &attachmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "attachmentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAttachment(w, r, attachmentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAttachmentContent operation middleware
+func (siw *ServerInterfaceWrapper) GetAttachmentContent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "attachmentId" -------------
+	var attachmentId AttachmentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "attachmentId", r.PathValue("attachmentId"), &attachmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "attachmentId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAttachmentContentParams
+
+	// ------------- Optional query parameter "disposition" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "disposition", r.URL.Query(), &params.Disposition, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "disposition"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "disposition", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAttachmentContent(w, r, attachmentId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAttachmentText operation middleware
+func (siw *ServerInterfaceWrapper) GetAttachmentText(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "attachmentId" -------------
+	var attachmentId AttachmentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "attachmentId", r.PathValue("attachmentId"), &attachmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "attachmentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAttachmentText(w, r, attachmentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CorrectAttachmentText operation middleware
+func (siw *ServerInterfaceWrapper) CorrectAttachmentText(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "attachmentId" -------------
+	var attachmentId AttachmentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "attachmentId", r.PathValue("attachmentId"), &attachmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "attachmentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CorrectAttachmentText(w, r, attachmentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReextractAttachmentText operation middleware
+func (siw *ServerInterfaceWrapper) ReextractAttachmentText(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "attachmentId" -------------
+	var attachmentId AttachmentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "attachmentId", r.PathValue("attachmentId"), &attachmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "attachmentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReextractAttachmentText(w, r, attachmentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListAuditRecords operation middleware
 func (siw *ServerInterfaceWrapper) ListAuditRecords(w http.ResponseWriter, r *http.Request) {
@@ -517,6 +1717,32 @@ func (siw *ServerInterfaceWrapper) ListAuditRecords(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// UndoAuditRecord operation middleware
+func (siw *ServerInterfaceWrapper) UndoAuditRecord(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "recordId" -------------
+	var recordId int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "recordId", r.PathValue("recordId"), &recordId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "recordId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UndoAuditRecord(w, r, recordId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SignIn operation middleware
 func (siw *ServerInterfaceWrapper) SignIn(w http.ResponseWriter, r *http.Request) {
 
@@ -573,11 +1799,519 @@ func (siw *ServerInterfaceWrapper) ChangeOwnPassword(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// ListCustomFields operation middleware
+func (siw *ServerInterfaceWrapper) ListCustomFields(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCustomFields(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCustomField operation middleware
+func (siw *ServerInterfaceWrapper) CreateCustomField(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCustomField(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteCustomField operation middleware
+func (siw *ServerInterfaceWrapper) DeleteCustomField(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "fieldId" -------------
+	var fieldId FieldId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "fieldId", r.PathValue("fieldId"), &fieldId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fieldId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteCustomField(w, r, fieldId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateCustomField operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCustomField(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "fieldId" -------------
+	var fieldId FieldId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "fieldId", r.PathValue("fieldId"), &fieldId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fieldId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateCustomField(w, r, fieldId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetDashboard operation middleware
+func (siw *ServerInterfaceWrapper) GetDashboard(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDashboard(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListProperties operation middleware
+func (siw *ServerInterfaceWrapper) ListProperties(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPropertiesParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", r.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "page"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "pageSize" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "pageSize", r.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "pageSize"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "pageSize", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "code" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "code", r.URL.Query(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "code"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "code", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "name" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "name", r.URL.Query(), &params.Name, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "name"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "propertyTypeId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "propertyTypeId", r.URL.Query(), &params.PropertyTypeId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "propertyTypeId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "propertyTypeId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "areaId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "areaId", r.URL.Query(), &params.AreaId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "areaId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "areaId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "includeArchived" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeArchived", r.URL.Query(), &params.IncludeArchived, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "includeArchived"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "includeArchived", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListProperties(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateProperty operation middleware
+func (siw *ServerInterfaceWrapper) CreateProperty(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateProperty(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchProperties operation middleware
+func (siw *ServerInterfaceWrapper) SearchProperties(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchProperties(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProperty operation middleware
+func (siw *ServerInterfaceWrapper) GetProperty(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "propertyId" -------------
+	var propertyId PropertyId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "propertyId", r.PathValue("propertyId"), &propertyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "propertyId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProperty(w, r, propertyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateProperty operation middleware
+func (siw *ServerInterfaceWrapper) UpdateProperty(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "propertyId" -------------
+	var propertyId PropertyId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "propertyId", r.PathValue("propertyId"), &propertyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "propertyId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateProperty(w, r, propertyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ArchiveProperty operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveProperty(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "propertyId" -------------
+	var propertyId PropertyId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "propertyId", r.PathValue("propertyId"), &propertyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "propertyId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ArchiveProperty(w, r, propertyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAttachments operation middleware
+func (siw *ServerInterfaceWrapper) ListAttachments(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "propertyId" -------------
+	var propertyId PropertyId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "propertyId", r.PathValue("propertyId"), &propertyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "propertyId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAttachments(w, r, propertyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UploadAttachment operation middleware
+func (siw *ServerInterfaceWrapper) UploadAttachment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "propertyId" -------------
+	var propertyId PropertyId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "propertyId", r.PathValue("propertyId"), &propertyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "propertyId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UploadAttachment(w, r, propertyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ChangePropertyCode operation middleware
+func (siw *ServerInterfaceWrapper) ChangePropertyCode(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "propertyId" -------------
+	var propertyId PropertyId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "propertyId", r.PathValue("propertyId"), &propertyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "propertyId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangePropertyCode(w, r, propertyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RestoreProperty operation middleware
+func (siw *ServerInterfaceWrapper) RestoreProperty(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "propertyId" -------------
+	var propertyId PropertyId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "propertyId", r.PathValue("propertyId"), &propertyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "propertyId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RestoreProperty(w, r, propertyId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPropertyTypes operation middleware
+func (siw *ServerInterfaceWrapper) ListPropertyTypes(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPropertyTypes(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreatePropertyType operation middleware
+func (siw *ServerInterfaceWrapper) CreatePropertyType(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePropertyType(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeletePropertyType operation middleware
+func (siw *ServerInterfaceWrapper) DeletePropertyType(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "lookupId" -------------
+	var lookupId LookupId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lookupId", r.PathValue("lookupId"), &lookupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lookupId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeletePropertyType(w, r, lookupId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RenamePropertyType operation middleware
+func (siw *ServerInterfaceWrapper) RenamePropertyType(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "lookupId" -------------
+	var lookupId LookupId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lookupId", r.PathValue("lookupId"), &lookupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lookupId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RenamePropertyType(w, r, lookupId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -859,6 +2593,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	}
 
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/dashboard", wrapper.GetDashboard)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/login", wrapper.SignIn)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/logout", wrapper.SignOut)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/auth/me", wrapper.GetCurrentUser)
@@ -869,6 +2604,37 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/users/{userId}", wrapper.UpdateUser)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/users/{userId}/password", wrapper.ResetUserPassword)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/audit-records", wrapper.ListAuditRecords)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/audit-records/{recordId}/undo", wrapper.UndoAuditRecord)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/properties", wrapper.ListProperties)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/properties", wrapper.CreateProperty)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/properties/search", wrapper.SearchProperties)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/properties/{propertyId}", wrapper.GetProperty)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/properties/{propertyId}", wrapper.UpdateProperty)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/properties/{propertyId}/code", wrapper.ChangePropertyCode)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/properties/{propertyId}/archive", wrapper.ArchiveProperty)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/properties/{propertyId}/restore", wrapper.RestoreProperty)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/property-types", wrapper.ListPropertyTypes)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/property-types", wrapper.CreatePropertyType)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/property-types/{lookupId}", wrapper.DeletePropertyType)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/property-types/{lookupId}", wrapper.RenamePropertyType)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/areas", wrapper.ListAreas)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/areas", wrapper.CreateArea)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/areas/{lookupId}", wrapper.DeleteArea)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/areas/{lookupId}", wrapper.RenameArea)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/custom-fields", wrapper.ListCustomFields)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/custom-fields", wrapper.CreateCustomField)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/custom-fields/{fieldId}", wrapper.DeleteCustomField)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/custom-fields/{fieldId}", wrapper.UpdateCustomField)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/properties/{propertyId}/attachments", wrapper.ListAttachments)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/properties/{propertyId}/attachments", wrapper.UploadAttachment)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/attachments/{attachmentId}", wrapper.DeleteAttachment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/attachments/{attachmentId}", wrapper.GetAttachment)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/attachments/{attachmentId}", wrapper.UpdateAttachment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/attachments/{attachmentId}/content", wrapper.GetAttachmentContent)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/attachments/{attachmentId}/text", wrapper.GetAttachmentText)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/attachments/{attachmentId}/text", wrapper.CorrectAttachmentText)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/attachments/{attachmentId}/text/reextract", wrapper.ReextractAttachmentText)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/attachments/search", wrapper.SearchDocuments)
 
 	return m
 }
@@ -878,76 +2644,203 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"J+qutmxO1ZF8y7GR3bv5ePN/AwA=",
+	"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",
+	"XD4IC/Du8/8bAA==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

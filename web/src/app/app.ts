@@ -66,6 +66,15 @@ const NAV_COLLAPSED_KEY = 'pms.nav.collapsed';
               <span class="pms-collapsible">{{ msgs.home }}</span>
             </a>
 
+            <a routerLink="/properties" routerLinkActive="is-current" [title]="msgs.properties">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path>
+                <path d="M9 21v-7h6v7"></path>
+              </svg>
+              <span class="pms-collapsible">{{ msgs.properties }}</span>
+            </a>
+
             <!-- Accounts and the records view both live under Settings, and
                  Settings is administrator-only. Hiding it is presentation only;
                  the server refuses a manager on every one of those endpoints

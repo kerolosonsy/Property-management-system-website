@@ -15,7 +15,10 @@
 
 @use 'styles/design-system.css';
 
-html, body { height: 100%; }
+html,
+body {
+  height: 100%;
+}
 
 // Heading scale for application screens.
 //
@@ -24,16 +27,29 @@ html, body { height: 100%; }
 // render it: every <h1> in the design is overridden inline to 25px and every
 // <h2> to 20px, because a screen heading is not a display heading. These rules
 // put the application at the sizes the design actually shows.
-.pms-page h1, .pms-auth-card h1 { font-size: 25px; }
-.pms-page h2, .pms-auth-card h2 { font-size: 20px; }
-.pms-page h3, .pms-auth-card h3 { font-size: 17px; }
+.pms-page h1,
+.pms-auth-card h1 {
+  font-size: 25px;
+}
+.pms-page h2,
+.pms-auth-card h2 {
+  font-size: 20px;
+}
+.pms-page h3,
+.pms-auth-card h3 {
+  font-size: 17px;
+}
 
-a:hover { text-decoration: underline; }
+a:hover {
+  text-decoration: underline;
+}
 
 // — layout —
 
 .pms-page {
-  padding: var(--space-6);
+  // No block-start padding: the view header is sticky and must meet the top of
+  // the scroll container, or content would show through the gap above it.
+  padding: 0 var(--space-6) var(--space-6);
   max-inline-size: 1100px;
   margin-inline: auto;
 }
@@ -42,9 +58,20 @@ a:hover { text-decoration: underline; }
 // design's compact content card. The card itself — square, hairline,
 // transparent — is the design's.
 .pms-page > .card {
-  padding: var(--space-6);
-  gap: var(--space-4);
+  // Block padding trimmed one step from --space-6 so a screen holds more of
+  // its content; the inline padding keeps the design's frame.
+  padding: var(--space-5) var(--space-6);
+  gap: var(--space-3);
   margin-block-end: var(--space-4);
+}
+
+// Table rows trimmed a couple of pixels per cell (the design's --space-2
+// block padding becomes 5px). Only td: the label rows carry a pinned height
+// for the sticky stack, and the per-column filter row keeps its roomier
+// padding for its inputs.
+.pms-page .table td {
+  padding-block: 5px;
+  padding-inline: var(--space-2);
 }
 
 // — toolbar: the design's .nav, plus the application chrome it does not
@@ -61,10 +88,15 @@ a:hover { text-decoration: underline; }
     font-size: 18px;
   }
 
-  nav { display: flex; gap: var(--space-4); }
+  nav {
+    display: flex;
+    gap: var(--space-4);
+  }
 }
 
-.pms-toolbar-spacer { flex: 1; }
+.pms-toolbar-spacer {
+  flex: 1;
+}
 
 .pms-toolbar-user {
   display: flex;
@@ -77,13 +109,78 @@ a:hover { text-decoration: underline; }
 //   rhythm between fields and the validation message are ours —
 
 .pms-field {
-  margin-block-end: var(--space-4);
+  // --space-3, trimmed one step from --space-4: forms flow in columns now
+  // (see .pms-form-grid) and the tighter beat buys fields per screen without
+  // crowding the inputs themselves.
+  margin-block-end: var(--space-3);
+}
+
+// Responsive form grid. Stacked full-width fields made every form two to
+// three viewports tall; fields flow into equal columns that reflow to one on
+// a narrow viewport. Anything that genuinely needs the whole row (a long
+// note, a textarea, a growing choice list) spans all columns with
+// .pms-form-grid-full. Row rhythm stays with .pms-field's block-end margin,
+// so a grid and a stack share the same vertical beat.
+.pms-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  column-gap: var(--space-4);
+  row-gap: 0;
+}
+
+.pms-form-grid-full {
+  grid-column: 1 / -1;
+}
+
+// Two columns need more room than the single-column cap the forms had.
+.pms-form-card {
+  max-inline-size: 72rem;
+  margin-inline: auto;
+}
+
+// ── Property detail columns ────────────────────────────────────────────────
+//
+// The detail card and the attachments panel sit side by side on a wide
+// screen so neither pushes the other below the fold; auto-fit drops back to
+// a single column (the previous layout) once the viewport is too narrow,
+// and collapses to one full-width column when the attachments panel is not
+// rendered at all (an archived property).
+.pms-detail-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+
+  > * {
+    // Long unbroken filenames in the attachments column must not blow the
+    // grid track open.
+    min-inline-size: 0;
+  }
+}
+
+.pms-detail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+
+  // Grouped this way the cards are no longer direct children of .pms-page,
+  // so they keep the page-card rhythm through the stack instead.
+  > .card {
+    padding: var(--space-5) var(--space-6);
+    gap: var(--space-3);
+  }
 }
 
 .pms-field-error {
   margin-block-start: 4px;
   font-size: 12px;
   color: var(--color-accent-700);
+}
+
+.pms-field-hint {
+  margin-block-start: 4px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
 }
 
 // — feedback —
@@ -156,7 +253,10 @@ a:hover { text-decoration: underline; }
   font-size: 20px;
 }
 
-.pms-auth-sub { font-size: 12px; opacity: 0.55; }
+.pms-auth-sub {
+  font-size: 12px;
+  opacity: 0.55;
+}
 
 // ── Application shell ──────────────────────────────────────────────────────
 //
@@ -167,7 +267,10 @@ a:hover { text-decoration: underline; }
 
 .pms-shell {
   display: flex;
+  // dvh rather than vh: on mobile the browser chrome would otherwise push the
+  // last row out of view. Falls back to vh where dvh is unsupported.
   block-size: 100vh;
+  block-size: 100dvh;
   overflow: hidden;
 }
 
@@ -186,15 +289,21 @@ a:hover { text-decoration: underline; }
 }
 
 // Collapsed: an icon rail. Everything stays reachable — only the labels go.
-.pms-shell.is-collapsed .pms-aside { inline-size: 60px; }
+.pms-shell.is-collapsed .pms-aside {
+  inline-size: 60px;
+}
 
 // The label spans and text blocks that disappear when collapsed. Hidden with
 // display:none rather than width:0 so they are removed from the accessibility
 // tree too, and each control keeps a title attribute as its accessible name.
-.pms-shell.is-collapsed .pms-collapsible { display: none; }
+.pms-shell.is-collapsed .pms-collapsible {
+  display: none;
+}
 
 .pms-shell.is-collapsed {
-  .pms-brand { justify-content: center; }
+  .pms-brand {
+    justify-content: center;
+  }
 
   .pms-nav a,
   .pms-aside-user,
@@ -206,7 +315,9 @@ a:hover { text-decoration: underline; }
 
 // Respect a reduced-motion preference: the width still changes, just instantly.
 @media (prefers-reduced-motion: reduce) {
-  .pms-aside { transition: none; }
+  .pms-aside {
+    transition: none;
+  }
 }
 
 .pms-nav-toggle {
@@ -226,17 +337,28 @@ a:hover { text-decoration: underline; }
   border-radius: 0;
   opacity: 0.6;
 
-  &:hover { opacity: 1; background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+  &:hover {
+    opacity: 1;
+    background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  }
 
   // The chevron is drawn pointing inline-start. `scaleX(-1)` under RTL keeps it
   // pointing the way the panel actually moves, and it flips again when
   // collapsed so it always indicates the action, not the state.
-  svg { transition: transform 180ms ease; }
+  svg {
+    transition: transform 180ms ease;
+  }
 }
 
-[dir="rtl"] .pms-nav-toggle svg { transform: scaleX(-1); }
-.pms-shell.is-collapsed .pms-nav-toggle svg { transform: scaleX(1); }
-[dir="rtl"] .pms-shell.is-collapsed .pms-nav-toggle svg { transform: scaleX(1); }
+[dir='rtl'] .pms-nav-toggle svg {
+  transform: scaleX(-1);
+}
+.pms-shell.is-collapsed .pms-nav-toggle svg {
+  transform: scaleX(1);
+}
+[dir='rtl'] .pms-shell.is-collapsed .pms-nav-toggle svg {
+  transform: scaleX(1);
+}
 
 // Collapsed, the toggle centres itself over the rail.
 .pms-shell.is-collapsed .pms-nav-toggle {
@@ -245,9 +367,23 @@ a:hover { text-decoration: underline; }
   inset-block-start: calc(var(--space-4) + 40px);
 }
 
+// The only scrolling region. The shell is a fixed viewport height and the
+// aside scrolls independently, so the page as a whole never scrolls and the
+// header can stick to the top of this box.
 .pms-main {
   flex: 1;
+  min-inline-size: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  // Keeps the sticky header from jumping as content height changes.
+  scrollbar-gutter: stable;
+  // The pinned view head's height, for everything that must stick beneath
+  // it. The head measures 74.8px (title 28 + crumb 18.6 + padding 27.2 +
+  // hairline 1); the labels offset by 74px so their top edge tucks slightly
+  // under the head and no sub-pixel gap lets rows show through between the
+  // two. A head that grows (a title wrapping on a narrow viewport) can only
+  // cover the labels' top hairline, never the page content.
+  --pms-sticky-top: 74px;
 }
 
 .pms-brand {
@@ -294,7 +430,9 @@ a:hover { text-decoration: underline; }
     background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   }
 
-  svg { flex: none; }
+  svg {
+    flex: none;
+  }
 }
 
 .pms-aside-foot {
@@ -325,10 +463,15 @@ a:hover { text-decoration: underline; }
     background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   }
 
-  .pms-collapsible { display: flex; flex-direction: column; }
+  .pms-collapsible {
+    display: flex;
+    flex-direction: column;
+  }
 }
 
-.pms-aside-user-name { font-weight: 600; }
+.pms-aside-user-name {
+  font-weight: 600;
+}
 
 .pms-avatar {
   inline-size: 28px;
@@ -349,19 +492,63 @@ a:hover { text-decoration: underline; }
 
 // ── View header ────────────────────────────────────────────────────────────
 
+// The header stays put while the view scrolls beneath it. `.pms-main` is the
+// scroll container, so sticking to its block-start keeps the title, the search
+// and the primary action reachable from anywhere in a long list.
 .pms-view-head {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 5;
+  // Opaque: rows scrolling underneath must not show through.
+  background: var(--color-surface);
+  // Cancels the page's inline padding so the divider spans the full width.
+  margin-inline: calc(-1 * var(--space-6));
+  padding-inline: var(--space-6);
   display: flex;
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-6);
   border-block-end: 1px solid var(--color-divider);
 
-  h1 { margin: 0; font-size: 25px; }
+  h1 {
+    margin: 0;
+    font-size: 25px;
+  }
 }
 
 .pms-crumb {
   font-size: 12px;
   opacity: 0.55;
+}
+
+// ── View foot ──────────────────────────────────────────────────────────────
+//
+// The view head's mirror at the other end of the screen. Form action bars
+// and paging move into it so the controls the user needs from anywhere in a
+// long screen — حفظ / إلغاء, next page — never scroll out of reach. It sticks
+// to the block-end of the same scroll container (.pms-main), stays under the
+// head (z 5) and above the sticky table labels (z 3), and takes the head's
+// own opaque-band treatment so rows scrolling beneath it do not show through.
+.pms-view-foot {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 4;
+  background: var(--color-surface);
+  border-block-start: 1px solid var(--color-divider);
+  // Cancels the page's inline padding so the hairline spans the full width,
+  // exactly as the view head does.
+  margin-inline: calc(-1 * var(--space-6));
+  padding: var(--space-3) var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+// .pms-paging reused as the pinned bar keeps its flex layout; the block-start
+// margin it carries in the page flow would push the bar's content around, and
+// the foot's own padding does that job now.
+.pms-view-foot.pms-paging {
+  margin-block-start: 0;
 }
 
 // ── Settings section nav ───────────────────────────────────────────────────
@@ -404,7 +591,216 @@ a:hover { text-decoration: underline; }
   flex: 1;
   min-inline-size: 0;
 
+  // A section screen pins two heads — Settings' own above, then the
+  // section's — so the section head rides beneath the Settings head instead
+  // of over it, and everything else sticky in the body rides beneath both
+  // (74px + 74px, the two head heights).
+  --pms-sticky-top: 148px;
+
+  .pms-view-head {
+    inset-block-start: 74px;
+  }
+
   // Sections supply their own card; the page wrapper's padding would double up
   // with the layout's.
-  .pms-page { padding: 0; max-inline-size: none; }
+  .pms-page {
+    padding: 0;
+    max-inline-size: none;
+  }
+}
+
+// ── Section head ───────────────────────────────────────────────────────────
+// The design's h2 + result-count line that sits above the table card.
+
+.pms-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-block-end: var(--space-4);
+
+  h2 {
+    margin: 0;
+    font-size: 20px;
+  }
+}
+
+.pms-section-count {
+  font-size: 12px;
+  opacity: 0.55;
+  margin-block-start: 2px;
+}
+
+// ── Joined search group ────────────────────────────────────────────────────
+// The design joins the search field to the advanced-search button into one
+// control. Radii are logical, so the seam lands on the correct side under RTL.
+
+.pms-searchgroup {
+  display: flex;
+  align-items: stretch;
+
+  .field {
+    inline-size: 260px;
+    margin: 0;
+  }
+
+  .input {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+  }
+
+  .btn {
+    border-inline-start: none;
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+  }
+}
+
+// ── Flush card ─────────────────────────────────────────────────────────────
+// The design's table card keeps padding:0 so the table meets the card edge,
+// and filter rows inside it supply their own padding. No overflow rule: a
+// clip here would also clip the sticky <th> to the card's box, and the
+// column labels would never pin. The square, hairline card loses nothing by
+// letting content paint to its edges.
+
+.pms-card-flush {
+  padding: 0;
+
+  .pms-filters {
+    padding: var(--space-4) var(--space-4) 0;
+  }
+  .pms-empty,
+  .pms-error-banner,
+  .pms-paging {
+    padding-inline: var(--space-4);
+  }
+}
+
+// The design's content band below the view header. Trimmed a step at the
+// top (and the bottom's --space-8 ghost dropped to --space-6) so the table
+// starts higher in the viewport.
+.pms-section-body {
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+
+// ── Sticky table labels ────────────────────────────────────────────────────
+//
+// Column labels stay visible while rows scroll: every <th> pins just beneath
+// the view head (beneath both heads, inside Settings). Two rules make that
+// safe. Borders: in a collapsed-border table the shared edges belong to the
+// table, not the cell, so a stuck <th> would scroll its own border away —
+// separating the borders at zero spacing keeps the design's single
+// hairlines (every border sits on a block-end edge) while letting the labels
+// move. Overflow: see the note on .pms-card-flush above.
+
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table thead th {
+  position: sticky;
+  inset-block-start: var(--pms-sticky-top, 0);
+  z-index: 3;
+  // Opaque: rows scrolling underneath must not show through.
+  background: var(--color-bg);
+}
+
+// The label row's height is pinned so the per-column filter row beneath it
+// can offset by an exact amount; 32px is the row's natural height (11px
+// line + 2 × --space-2 padding + hairline) with room to spare.
+.table thead tr:not(.pms-colfilter) th {
+  block-size: 32px;
+}
+
+// The filter row sticks directly beneath the label row, one layer further
+// down the stack: view head (z 5) → labels (z 3) → filters (z 2).
+.table thead .pms-colfilter th {
+  position: sticky;
+  inset-block-start: calc(var(--pms-sticky-top, 0px) + 32px);
+  z-index: 2;
+  background: var(--color-bg);
+}
+
+// ── Per-column filter row ──────────────────────────────────────────────────
+// The design source puts a second header row of small controls under the
+// column labels. Sizes are its own.
+
+.pms-colfilter th {
+  padding: 6px var(--space-2);
+}
+
+.pms-colfilter .input {
+  inline-size: 100%;
+  font-size: 12px;
+  min-block-size: 28px;
+  padding: 4px 8px;
+}
+
+// Empty-result row inside the table, so the column filters above it survive.
+.pms-empty-cell {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-neutral-600);
+}
+
+.pms-clear-inline {
+  margin-inline-start: var(--space-3);
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+//
+// Five features share this dialog shell: archive/restore confirm, attachment
+// remove/promote/viewer, custom-field remove, and lookup remove. The backdrop
+// covers the viewport with a dim wash; the panel sits centred, scrolls when its
+// body outgrows the viewport, and adapts via .pms-modal-wide for the inline
+// document viewer. Escape closes through the [pmsCloseOnEscape] directive
+// attached to each backdrop — keyboard parity with the existing click-to-close
+// behaviour (Constitution II).
+
+.pms-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--color-text) 45%, transparent);
+  z-index: 1000;
+}
+
+.pms-modal {
+  inline-size: 100%;
+  max-inline-size: 480px;
+  max-block-size: calc(100vh - 2 * var(--space-4));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  box-shadow: var(--shadow-lg);
+  overflow-y: auto;
+}
+
+.pms-modal-wide {
+  max-inline-size: min(90vw, 1200px);
+  block-size: min(80vh, 900px);
+}
+
+.pms-modal h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.pms-modal p {
+  margin: 0;
+  color: color-mix(in srgb, var(--color-text) 80%, transparent);
+}
+
+.pms-modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-block-start: var(--space-3);
 }

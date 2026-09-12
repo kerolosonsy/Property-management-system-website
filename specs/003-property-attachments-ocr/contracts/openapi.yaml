@@ -1,0 +1,499 @@
+openapi: 3.1.0
+
+info:
+  title: Property Management System — Property Attachments
+  version: 1.0.0
+  description: |
+    Source of truth for the boundary between the Angular application and the Go service for
+    feature 003-property-attachments-ocr. Both sides are generated from this document
+    (Constitution III).
+
+    Every operation here is `manager`, which an administrator also satisfies: attachments
+    are operational data (FR-031). This feature has no configuration surface and therefore
+    no administrator-only operation.
+
+    Two rules govern content and are enforced on the server regardless of the client:
+    a sensitive attachment's extracted text is never searched and never returned by search
+    (FR-022b, FR-029), and an attachment's sensitivity may be raised but never lowered
+    (FR-022c).
+
+    Bodies and downloads carry `Cache-Control: no-store`. Nothing derived from an
+    attachment — thumbnail, rendering, preview — is produced or stored anywhere
+    (Constitution VII as amended in v1.3.0).
+
+servers:
+  - url: https://localhost:8443/api/v1
+    description: Local development. TLS only.
+
+tags:
+  - name: attachments
+    description: Documents held against a property
+  - name: attachment-text
+    description: Text read out of a document, and corrections to it
+  - name: document-search
+    description: Finding properties by what their documents say
+
+security:
+  - sessionCookie: []
+
+paths:
+
+  /properties/{propertyId}/attachments:
+    parameters:
+      - $ref: '#/components/parameters/PropertyId'
+    get:
+      tags: [attachments]
+      operationId: listAttachments
+      summary: The documents held against a property
+      x-required-role: manager
+      responses:
+        '200':
+          description: Newest first. An empty list is a valid answer.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Attachment' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+    post:
+      tags: [attachments]
+      operationId: uploadAttachment
+      summary: Attach a document
+      description: |
+        The type is judged from the file's content, never from its name (FR-004a). The size
+        limit is configuration; the refusal message states the configured value (FR-005a).
+        Marking `isSensitive` at upload means the extracted text will be encrypted and never
+        searched. Refused when the property is archived (FR-006).
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, description]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                description:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                isSensitive:
+                  type: boolean
+                  default: false
+      responses:
+        '201':
+          description: Stored. Extraction has been queued and has not run yet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attachment' }
+        '400':
+          description: |
+            Missing or too-short description, or a file whose content is not an accepted
+            type — including a file renamed to look like one.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '409':
+          description: The property is archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: Larger than the configured maximum. The message states the limit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: |
+            The master key is unavailable, so nothing can be encrypted. Nothing is stored
+            (FR-016).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /attachments/{attachmentId}:
+    parameters:
+      - $ref: '#/components/parameters/AttachmentId'
+    get:
+      tags: [attachments]
+      operationId: getAttachment
+      summary: One attachment's metadata
+      x-required-role: manager
+      responses:
+        '200':
+          description: Metadata only. The body has its own operation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attachment' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+    patch:
+      tags: [attachments]
+      operationId: updateAttachment
+      summary: Change the description, or raise sensitivity
+      description: |
+        `description` may always change. `isSensitive` may only go from false to true;
+        `true` → `false` is refused with `409` (FR-022c). Promoting seals the extracted text
+        and removes it from search in the same transaction.
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description: { type: string, minLength: 2, maxLength: 200 }
+                isSensitive: { type: boolean }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attachment' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: |
+            An attempt to make a sensitive attachment non-sensitive, or the property is
+            archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+    delete:
+      tags: [attachments]
+      operationId: deleteAttachment
+      summary: Remove an attachment
+      description: |
+        Removes the stored file and the extracted text with it (FR-009). The audit record of
+        it having existed remains, as every audit record does.
+      x-required-role: manager
+      responses:
+        '204':
+          description: Removed.
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: The property is archived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /attachments/{attachmentId}/content:
+    parameters:
+      - $ref: '#/components/parameters/AttachmentId'
+      - name: disposition
+        in: query
+        description: |
+          `inline` streams the document for viewing in the application and is honoured only
+          for `pdf` and image types; everything else is served as an attachment whatever is
+          asked for (FR-013c). Default is `attachment`.
+        schema:
+          type: string
+          enum: [inline, attachment]
+          default: attachment
+    get:
+      tags: [attachments]
+      operationId: getAttachmentContent
+      summary: The document itself, decrypted for this request only
+      description: |
+        Decrypted and streamed per request. **Both viewing and downloading are reads and
+        both are audited** (FR-013d); the audit row is committed before the first byte is
+        served (research.md D-010). The response carries `Cache-Control: no-store`, because
+        a decrypted document in a browser cache is a decrypted document on disk.
+      x-required-role: manager
+      responses:
+        '200':
+          description: The original bytes, unchanged.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: 'no-store' }
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422':
+          description: |
+            The stored file failed authentication before streaming began — the header or the
+            first chunk has been altered or truncated. **No content whatsoever is returned**
+            (FR-014).
+
+            Tampering discovered in a later chunk cannot produce this status, because the
+            response has already begun. The server logs it and abandons the body without
+            completing `Content-Length`, so the transfer fails visibly and a truncated
+            document can never be mistaken for a whole one.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: The master key is unavailable, so nothing can be decrypted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /attachments/{attachmentId}/text:
+    parameters:
+      - $ref: '#/components/parameters/AttachmentId'
+    get:
+      tags: [attachment-text]
+      operationId: getAttachmentText
+      summary: The text read out of this document
+      description: |
+        For a sensitive attachment the text is decrypted for this request only, after the
+        role check, and appears in no log or audit record (FR-024c).
+      x-required-role: manager
+      responses:
+        '200':
+          description: |
+            The text, or an absent body when extraction found none or has not run.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttachmentText' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+    put:
+      tags: [attachment-text]
+      operationId: correctAttachmentText
+      summary: Correct the extracted text
+      description: |
+        Recognition of Arabic on a scan is imperfect; this is how a person fixes it so that
+        searches find the document. The correction is recorded with who made it, and is not
+        overwritten by any later extraction (FR-024a, FR-024b).
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string }
+      responses:
+        '200':
+          description: Corrected.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttachmentText' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /attachments/{attachmentId}/text/reextract:
+    parameters:
+      - $ref: '#/components/parameters/AttachmentId'
+    post:
+      tags: [attachment-text]
+      operationId: reextractAttachmentText
+      summary: Try extraction again
+      description: |
+        Permitted from `failed` and from `empty` (FR-020b). Refused with `409` when a person
+        has corrected the text, because re-extraction would discard the correction; the
+        correction must be cleared deliberately first (FR-020c). Refused with `409` when an
+        extraction for this attachment is already running (FR-020d).
+      x-required-role: manager
+      responses:
+        '202':
+          description: Queued. The attachment returns to `pending`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attachment' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: |
+            The text has been corrected, an extraction is already running, or the state does
+            not permit re-extraction.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /attachments/search:
+    post:
+      tags: [document-search]
+      operationId: searchDocuments
+      summary: Find properties by what their documents say
+      description: |
+        Searches the extracted text of **non-sensitive** attachments only. Sensitive
+        attachments are excluded for every role including administrators, structurally
+        rather than by a filter: their text carries no searchable form at all (research.md
+        D-008). The client is told the exclusion exists so it can say so in Arabic
+        (FR-022b).
+      x-required-role: manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [q]
+              properties:
+                q:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                  description: Matched after the same Arabic normalisation as property names.
+                includeArchived: { type: boolean, default: false }
+                page: { type: integer, minimum: 1, default: 1 }
+                pageSize: { type: integer, enum: [10, 25, 50, 100], default: 25 }
+      responses:
+        '200':
+          description: A page of matches, each naming the property and the attachment.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentSearchPage' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
+components:
+
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: pms_session
+
+  parameters:
+    PropertyId:
+      name: propertyId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AttachmentId:
+      name: attachmentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  schemas:
+
+    ExtractState:
+      type: string
+      enum: [pending, done, empty, not_eligible, too_large, failed]
+      description: |
+        `empty` and `not_eligible` are normal outcomes, not errors. `not_eligible` also
+        covers a document whose family needs a tool that is not installed (research.md
+        D-012), which the client reports in Arabic rather than as a failure.
+
+    Attachment:
+      type: object
+      required:
+        [id, propertyId, description, originalFilename, contentType, byteSize,
+         isSensitive, extractState, canViewInline, createdAt, createdBy]
+      properties:
+        id:               { type: string, format: uuid }
+        propertyId:       { type: string, format: uuid }
+        description:      { type: string, minLength: 2, maxLength: 200 }
+        originalFilename: { type: string }
+        contentType:      { type: string, description: Determined from content, not filename. }
+        byteSize:         { type: integer, format: int64 }
+        isSensitive:
+          type: boolean
+          description: |
+            True means the extracted text is encrypted and never searched. May be raised,
+            never lowered.
+        extractState:     { $ref: '#/components/schemas/ExtractState' }
+        extractError:
+          type: [string, 'null']
+          description: A reason code. Never any part of the document's content.
+        canViewInline:
+          type: boolean
+          description: |
+            True for `pdf` and images. False means the client offers a download instead of
+            a viewer (FR-013c).
+        createdAt:  { type: string, format: date-time }
+        createdBy:  { type: string }
+        updatedAt:  { type: string, format: date-time }
+        updatedBy:  { type: string }
+
+    AttachmentText:
+      type: object
+      required: [attachmentId, truncated, isCorrected]
+      properties:
+        attachmentId: { type: string, format: uuid }
+        body:
+          type: [string, 'null']
+          description: |
+            Absent when extraction found nothing or has not run. For a sensitive attachment
+            this is the decrypted text, returned only after the role check.
+        truncated:
+          type: boolean
+          description: |
+            True when the document produced more text than the configured cap, so a phrase
+            past the cut will not be found (FR-021).
+        isCorrected:  { type: boolean }
+        correctedBy:  { type: [string, 'null'] }
+        correctedAt:  { type: [string, 'null'], format: date-time }
+        extractedAt:  { type: [string, 'null'], format: date-time }
+
+    DocumentSearchHit:
+      type: object
+      required: [propertyId, propertyCode, propertyName, attachmentId, attachmentDescription]
+      properties:
+        propertyId:            { type: string, format: uuid }
+        propertyCode:          { type: string }
+        propertyName:          { type: string }
+        attachmentId:          { type: string, format: uuid }
+        attachmentDescription: { type: string }
+
+    DocumentSearchPage:
+      type: object
+      required: [items, page, pageSize, totalItems, sensitiveExcluded]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentSearchHit' }
+        page:       { type: integer }
+        pageSize:   { type: integer }
+        totalItems: { type: integer }
+        sensitiveExcluded:
+          type: boolean
+          description: |
+            Always true. Present so the client can state in Arabic that sensitive documents
+            are not searched, rather than silently returning fewer results (FR-022b).
+
+    Error:
+      type: object
+      required: [code, message]
+      description: |
+        The same error shape features 001 and 002 use, unchanged. `message` is Arabic. It
+        never carries file content, extracted text, a key, or internal failure detail.
+      properties:
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - not_authenticated
+            - forbidden
+            - not_found
+            - conflict
+            - archived
+            - too_large
+            - unsupported_type
+            - integrity_failed
+            - key_unavailable
+            - internal_error
+        message: { type: string }
+        fields:
+          type: [object, 'null']
+          additionalProperties: { type: string }
+
+  responses:
+    Error:
+      description: The request was refused. Body is the single error shape.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

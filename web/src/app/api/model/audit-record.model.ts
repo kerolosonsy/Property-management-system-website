@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -12,7 +12,7 @@ import { AuditAction } from './audit-action.model';
 
 
 /**
- * A record is never rewritten. The snapshot fields show accounts as they were named when the action happened, even if renamed since. Never contains a password or any decrypted value (FR-025). 
+ * A record is never rewritten. The snapshot fields show accounts as they were named when the action happened, even if renamed since. Never contains a password, a decrypted value, a key, or a wrapped key (Constitution VII).  `before` and `after` contain only fields whose values differ. Values appear ONLY for fields stored unencrypted at rest. A row whose change touched a sensitive field, an attachment\'s extracted text, or any other encrypted column records that the field changed and records neither value (Constitution VIII as amended in v1.4.0).  `reversesAuditId` names the record this one reverses when the action is `record_reverted`. `revertedByAuditId` names the record that reversed this one, if any. The two halves of an undo pair are both visible — the log gains a reversal, never an erasure. 
  */
 export interface AuditRecord { 
     id: number;
@@ -24,6 +24,14 @@ export interface AuditRecord {
     actorId?: string | null;
     actorUsername: string;
     actorRole?: Role | null;
+    /**
+     * The kind of business record this row concerns, when any.
+     */
+    entityType?: AuditRecord.EntityTypeEnum | null;
+    /**
+     * The identifier of that record (a reference code for a property).
+     */
+    entityId?: string | null;
     targetId?: string | null;
     targetUsername?: string | null;
     sourceIp: string;
@@ -31,8 +39,32 @@ export interface AuditRecord {
      * Field names and identifiers only.
      */
     detail?: { [key: string]: any; } | null;
+    /**
+     * Only values that changed, as they were before the change, keyed by field name. Fields stored encrypted at rest are absent (or marked as having changed) — never recorded as their decrypted value. Absent for actions that have no useful prior state (creates, attachment reads). 
+     */
+    before?: { [key: string]: any; } | null;
+    /**
+     * Only values that changed, as they were after the change, with the same restrictions as `before`. Absent for actions that have no useful post state (the deletion of an attachment). 
+     */
+    after?: { [key: string]: any; } | null;
+    /**
+     * For an action `record_reverted`, the id of the audit record this one reverses. Null otherwise. The reversed record stays visible; the log gains a reversal, never an erasure. 
+     */
+    reversesAuditId?: number | null;
+    /**
+     * For a record that has been undone, the id of the `record_reverted` row that undid it. Null otherwise. The two halves of an undo pair appear side by side on the records screen. 
+     */
+    revertedByAuditId?: number | null;
 }
 export namespace AuditRecord {
+    export const EntityTypeEnum = {
+        Property: 'property',
+        PropertyType: 'property_type',
+        Area: 'area',
+        CustomField: 'custom_field',
+        Attachment: 'attachment',
+    } as const;
+    export type EntityTypeEnum = typeof EntityTypeEnum[keyof typeof EntityTypeEnum];
 }
 
 

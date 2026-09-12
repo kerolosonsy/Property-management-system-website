@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -21,6 +21,27 @@ export const AuditAction = {
     AccountDeactivated: 'account_deactivated',
     SessionsInvalidated: 'sessions_invalidated',
     AdminRecoveryUsed: 'admin_recovery_used',
+    PropertyCreated: 'property_created',
+    PropertyModified: 'property_modified',
+    PropertyArchived: 'property_archived',
+    PropertyRestored: 'property_restored',
+    PropertyCodeChanged: 'property_code_changed',
+    LookupCreated: 'lookup_created',
+    LookupRenamed: 'lookup_renamed',
+    LookupRemoved: 'lookup_removed',
+    CustomFieldCreated: 'custom_field_created',
+    CustomFieldRenamed: 'custom_field_renamed',
+    CustomFieldRemoved: 'custom_field_removed',
+    CustomFieldChoiceAdded: 'custom_field_choice_added',
+    CustomFieldChoiceRemoved: 'custom_field_choice_removed',
+    AttachmentAdded: 'attachment_added',
+    AttachmentDescribed: 'attachment_described',
+    AttachmentSensitivityRaised: 'attachment_sensitivity_raised',
+    AttachmentRemoved: 'attachment_removed',
+    AttachmentRead: 'attachment_read',
+    AttachmentTextCorrected: 'attachment_text_corrected',
+    AttachmentReextractRequested: 'attachment_reextract_requested',
+    RecordReverted: 'record_reverted',
 } as const;
 export type AuditAction = typeof AuditAction[keyof typeof AuditAction];
 

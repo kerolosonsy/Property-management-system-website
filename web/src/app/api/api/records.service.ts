@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -18,6 +18,8 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
 import { AuditAction } from '../model/audit-action.model';
+// @ts-ignore
+import { AuditRecord } from '../model/audit-record.model';
 // @ts-ignore
 import { ListAuditRecords200Response } from '../model/list-audit-records200-response.model';
 
@@ -42,6 +44,11 @@ export interface ListAuditRecordsRequestParams {
     to?: string;
 }
 
+export interface UndoAuditRecordRequestParams {
+    /** The id of the audit record to undo. Only administrator actions can be undone (Constitution VIII).  */
+    recordId: number;
+}
+
 
 @Injectable({
   providedIn: 'root'
@@ -54,7 +61,7 @@ export class RecordsService extends BaseService {
 
     /**
      * Read recorded actions
-     * Administrator only (FR-043). Newest first, paged, filters combinable (FR-044, FR-045). There is no operation anywhere in this document that edits or deletes a record (FR-046, FR-024). 
+     * Administrator only. Newest first, paged, filters combinable. There is no operation anywhere in this document that edits or deletes a record. 
      * @endpoint get /audit-records
      * @param requestParameters
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -171,6 +178,66 @@ export class RecordsService extends BaseService {
             {
                 context: localVarHttpContext,
                 params: localVarQueryParameters.toHttpParams(),
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Reverse a recorded change
+     * Administrator only. Reverses the change recorded by &#x60;recordId&#x60; by writing a new audited change that restores only the fields present in the recorded \&quot;before\&quot; value through the normal store methods. Every other current field is left unchanged (Constitution VIII as amended in v1.4.0).  The undo itself is recorded with action &#x60;record_reverted&#x60;, and the new row carries &#x60;reversesAuditId&#x60; pointing back to &#x60;recordId&#x60;. The original record is never rewritten — both halves of the pair remain visible on the records screen.  Refused with 409 &#x60;version_conflict&#x60; if the business record changes concurrently while the undo is being applied. Refused with 409 &#x60;integrity_failed&#x60; when the original change touched an encrypted field whose prior value cannot be restored (the row says the field changed but never what it changed from — undoing that would be a lie). 
+     * @endpoint post /audit-records/{recordId}/undo
+     * @param requestParameters
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public undoAuditRecord(requestParameters: UndoAuditRecordRequestParams, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<AuditRecord>;
+    public undoAuditRecord(requestParameters: UndoAuditRecordRequestParams, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<AuditRecord>>;
+    public undoAuditRecord(requestParameters: UndoAuditRecordRequestParams, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<AuditRecord>>;
+    public undoAuditRecord(requestParameters: UndoAuditRecordRequestParams, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        const recordId = requestParameters?.recordId;
+        if (recordId === null || recordId === undefined) {
+            throw new Error('Required parameter recordId was null or undefined when calling undoAuditRecord.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (sessionCookie) required
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/audit-records/${this.configuration.encodeParam({name: "recordId", value: recordId, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: "int64"})}/undo`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<AuditRecord>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,

@@ -7,15 +7,9 @@ import (
 
 	"pms/internal/audit"
 	"pms/internal/auth"
+	"pms/internal/gen"
 	"pms/internal/identity"
 )
-
-type createUserBody struct {
-	Username        string `json:"username"`
-	DisplayName     string `json:"displayName"`
-	Role            string `json:"role"`
-	InitialPassword string `json:"initialPassword"`
-}
 
 func (s *Server) handleListUsers() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +82,7 @@ func (s *Server) handleCreateUser() http.Handler {
 			return
 		}
 
-		var body createUserBody
+		var body gen.CreateUserJSONBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -134,7 +128,7 @@ func (s *Server) handleCreateUser() http.Handler {
 			Username:          body.Username,
 			UsernameCanonical: identity.Canonical(body.Username),
 			DisplayName:       body.DisplayName,
-			Role:              body.Role,
+			Role:              string(body.Role),
 		}
 		creatorID := c.Account.ID
 		if err := s.identity.CreateAccount(r.Context(), tx, newAcct, hash, &creatorID); err != nil {
@@ -150,15 +144,18 @@ func (s *Server) handleCreateUser() http.Handler {
 
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
-		_ = audit.Write(r.Context(), tx, audit.Entry{
-			Action:         audit.AccountCreated,
-			ActorAccountID: &actorID,
-			ActorUsername:  c.Account.Username,
-			ActorRole:      &actorRole,
+		if err := audit.Write(r.Context(), tx, audit.Entry{
+			Action:          audit.AccountCreated,
+			ActorAccountID:  &actorID,
+			ActorUsername:   c.Account.Username,
+			ActorRole:       &actorRole,
 			TargetAccountID: &newAcct.ID,
 			TargetUsername:  strPtr(newAcct.Username),
-			SourceIP:       ClientIP(r),
-		})
+			SourceIP:        ClientIP(r),
+		}); err != nil {
+			refuseInternal(w, err)
+			return
+		}
 		if err := tx.Commit(r.Context()); err != nil {
 			refuseInternal(w, err)
 			return
@@ -215,12 +212,6 @@ func (s *Server) handleGetUser() http.Handler {
 	})
 }
 
-type updateUserBody struct {
-	DisplayName *string `json:"displayName,omitempty"`
-	Role        *string `json:"role,omitempty"`
-	IsActive    *bool   `json:"isActive,omitempty"`
-}
-
 func (s *Server) handleUpdateUser() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := s.authenticate(w, r)
@@ -242,7 +233,7 @@ func (s *Server) handleUpdateUser() http.Handler {
 			return
 		}
 
-		var body updateUserBody
+		var body gen.UpdateUserJSONBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -263,6 +254,11 @@ func (s *Server) handleUpdateUser() http.Handler {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidRequest).
 				WithField("role", MsgRoleRequiredAdmin))
 			return
+		}
+		var role *string
+		if body.Role != nil {
+			value := string(*body.Role)
+			role = &value
 		}
 
 		tx, err := s.pool.Begin(r.Context())
@@ -285,8 +281,8 @@ func (s *Server) handleUpdateUser() http.Handler {
 
 		// Determine effective post-change values for the invariant check.
 		postRole := current.Role
-		if body.Role != nil {
-			postRole = *body.Role
+		if role != nil {
+			postRole = *role
 		}
 		postActive := current.IsActive
 		if body.IsActive != nil {
@@ -305,7 +301,7 @@ func (s *Server) handleUpdateUser() http.Handler {
 			return
 		}
 
-		if err := s.identity.UpdateAccount(r.Context(), tx, id, body.DisplayName, body.Role, body.IsActive); err != nil {
+		if err := s.identity.UpdateAccount(r.Context(), tx, id, body.DisplayName, role, body.IsActive); err != nil {
 			refuseInternal(w, err)
 			return
 		}
@@ -318,50 +314,59 @@ func (s *Server) handleUpdateUser() http.Handler {
 
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
-		if body.Role != nil && *body.Role != current.Role {
-			_ = audit.Write(r.Context(), tx, audit.Entry{
-				Action:         audit.AccountRoleChanged,
-				ActorAccountID: &actorID,
-				ActorUsername:  c.Account.Username,
-				ActorRole:      &actorRole,
+		if role != nil && *role != current.Role {
+			if err := audit.Write(r.Context(), tx, audit.Entry{
+				Action:          audit.AccountRoleChanged,
+				ActorAccountID:  &actorID,
+				ActorUsername:   c.Account.Username,
+				ActorRole:       &actorRole,
 				TargetAccountID: &updated.ID,
 				TargetUsername:  strPtr(updated.Username),
-				SourceIP:       ClientIP(r),
+				SourceIP:        ClientIP(r),
 				Detail: map[string]any{
 					"from": current.Role,
-					"to":   *body.Role,
+					"to":   *role,
 				},
-			})
+			}); err != nil {
+				refuseInternal(w, err)
+				return
+			}
 		}
 		if body.IsActive != nil && *body.IsActive != current.IsActive {
 			action := audit.AccountActivated
 			if !*body.IsActive {
 				action = audit.AccountDeactivated
 			}
-			_ = audit.Write(r.Context(), tx, audit.Entry{
-				Action:         action,
-				ActorAccountID: &actorID,
-				ActorUsername:  c.Account.Username,
-				ActorRole:      &actorRole,
+			if err := audit.Write(r.Context(), tx, audit.Entry{
+				Action:          action,
+				ActorAccountID:  &actorID,
+				ActorUsername:   c.Account.Username,
+				ActorRole:       &actorRole,
 				TargetAccountID: &updated.ID,
 				TargetUsername:  strPtr(updated.Username),
-				SourceIP:       ClientIP(r),
-			})
+				SourceIP:        ClientIP(r),
+			}); err != nil {
+				refuseInternal(w, err)
+				return
+			}
 			// Deactivation revokes every session for the account (FR-020).
 			if !*body.IsActive {
 				if err := auth.RevokeAllForAccount(r.Context(), tx, updated.ID); err != nil {
 					refuseInternal(w, err)
 					return
 				}
-				_ = audit.Write(r.Context(), tx, audit.Entry{
-					Action:         audit.SessionsInvalidated,
-					ActorAccountID: &actorID,
-					ActorUsername:  c.Account.Username,
-					ActorRole:      &actorRole,
+				if err := audit.Write(r.Context(), tx, audit.Entry{
+					Action:          audit.SessionsInvalidated,
+					ActorAccountID:  &actorID,
+					ActorUsername:   c.Account.Username,
+					ActorRole:       &actorRole,
 					TargetAccountID: &updated.ID,
 					TargetUsername:  strPtr(updated.Username),
-					SourceIP:       ClientIP(r),
-				})
+					SourceIP:        ClientIP(r),
+				}); err != nil {
+					refuseInternal(w, err)
+					return
+				}
 			}
 		}
 
@@ -375,10 +380,6 @@ func (s *Server) handleUpdateUser() http.Handler {
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(toUser(*updated))
 	})
-}
-
-type resetPasswordBody struct {
-	NewPassword string `json:"newPassword"`
 }
 
 func (s *Server) handleResetUserPassword() http.Handler {
@@ -402,7 +403,7 @@ func (s *Server) handleResetUserPassword() http.Handler {
 			return
 		}
 
-		var body resetPasswordBody
+		var body gen.ResetUserPasswordJSONBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			WriteError(w, NewAPIError(http.StatusBadRequest, CodeInvalidRequest, MsgInvalidJSON))
 			return
@@ -447,24 +448,30 @@ func (s *Server) handleResetUserPassword() http.Handler {
 
 		actorID := c.Account.ID
 		actorRole := c.Account.Role
-		_ = audit.Write(r.Context(), tx, audit.Entry{
-			Action:         audit.PasswordReset,
-			ActorAccountID: &actorID,
-			ActorUsername:  c.Account.Username,
-			ActorRole:      &actorRole,
+		if err := audit.Write(r.Context(), tx, audit.Entry{
+			Action:          audit.PasswordReset,
+			ActorAccountID:  &actorID,
+			ActorUsername:   c.Account.Username,
+			ActorRole:       &actorRole,
 			TargetAccountID: &target.ID,
 			TargetUsername:  strPtr(target.Username),
-			SourceIP:       ClientIP(r),
-		})
-		_ = audit.Write(r.Context(), tx, audit.Entry{
-			Action:         audit.SessionsInvalidated,
-			ActorAccountID: &actorID,
-			ActorUsername:  c.Account.Username,
-			ActorRole:      &actorRole,
+			SourceIP:        ClientIP(r),
+		}); err != nil {
+			refuseInternal(w, err)
+			return
+		}
+		if err := audit.Write(r.Context(), tx, audit.Entry{
+			Action:          audit.SessionsInvalidated,
+			ActorAccountID:  &actorID,
+			ActorUsername:   c.Account.Username,
+			ActorRole:       &actorRole,
 			TargetAccountID: &target.ID,
 			TargetUsername:  strPtr(target.Username),
-			SourceIP:       ClientIP(r),
-		})
+			SourceIP:        ClientIP(r),
+		}); err != nil {
+			refuseInternal(w, err)
+			return
+		}
 		if err := tx.Commit(r.Context()); err != nil {
 			refuseInternal(w, err)
 			return

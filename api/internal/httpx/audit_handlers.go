@@ -90,6 +90,39 @@ func (s *Server) handleListAuditRecords() http.Handler {
 			return
 		}
 
+		// Look up which records have been undone so the response can carry
+		// `revertedByAuditId`. One query covers the whole page (item 5).
+		ids := make([]int64, 0, len(items))
+		for _, r := range items {
+			if r.ReversesAuditID == nil {
+				ids = append(ids, r.ID)
+			}
+		}
+		revertedBy := map[int64]int64{}
+		if len(ids) > 0 {
+			revRows, qErr := s.pool.Query(r.Context(), `
+				SELECT reverses_audit_id, id FROM audit_log
+				WHERE reverses_audit_id = ANY($1) AND action = 'record_reverted'`, ids)
+			if qErr != nil {
+				refuseInternal(w, qErr)
+				return
+			}
+			for revRows.Next() {
+				var rev, id int64
+				if scanErr := revRows.Scan(&rev, &id); scanErr != nil {
+					revRows.Close()
+					refuseInternal(w, scanErr)
+					return
+				}
+				revertedBy[rev] = id
+			}
+			revRows.Close()
+			if err := revRows.Err(); err != nil {
+				refuseInternal(w, err)
+				return
+			}
+		}
+
 		respItems := make([]map[string]any, 0, len(items))
 		for _, r := range items {
 			rec := map[string]any{
@@ -109,6 +142,16 @@ func (s *Server) handleListAuditRecords() http.Handler {
 			} else {
 				rec["actorRole"] = nil
 			}
+			if r.EntityType != nil {
+				rec["entityType"] = string(*r.EntityType)
+			} else {
+				rec["entityType"] = nil
+			}
+			if r.EntityID != nil {
+				rec["entityId"] = *r.EntityID
+			} else {
+				rec["entityId"] = nil
+			}
 			if r.TargetID != nil {
 				rec["targetId"] = r.TargetID.String()
 			} else {
@@ -123,6 +166,26 @@ func (s *Server) handleListAuditRecords() http.Handler {
 				rec["detail"] = json.RawMessage(r.Detail)
 			} else {
 				rec["detail"] = nil
+			}
+			if len(r.Before) > 0 {
+				rec["before"] = json.RawMessage(r.Before)
+			} else {
+				rec["before"] = nil
+			}
+			if len(r.After) > 0 {
+				rec["after"] = json.RawMessage(r.After)
+			} else {
+				rec["after"] = nil
+			}
+			if r.ReversesAuditID != nil {
+				rec["reversesAuditId"] = *r.ReversesAuditID
+			} else {
+				rec["reversesAuditId"] = nil
+			}
+			if v, ok := revertedBy[r.ID]; ok {
+				rec["revertedByAuditId"] = v
+			} else {
+				rec["revertedByAuditId"] = nil
 			}
 			respItems = append(respItems, rec)
 		}

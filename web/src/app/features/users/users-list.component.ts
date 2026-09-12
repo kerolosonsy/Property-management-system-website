@@ -16,13 +16,20 @@ import { ApiError } from '../../core/api-error';
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
     <section class="pms-page">
-      <div class="card">
-        <header style="display: flex; align-items: center; gap: 1rem;">
-          <h1 style="margin: 0; flex: 1;">{{ msgs.usersList }}</h1>
-          <a routerLink="/settings/users/new" class="btn btn-primary">{{ msgs.create }}</a>
-        </header>
+      <header class="pms-view-head">
+        <div>
+          <h1>{{ msgs.usersList }}</h1>
+          <div class="pms-crumb">{{ msgs.settings }} / {{ msgs.usersList }}</div>
+        </div>
+        <div class="pms-toolbar-spacer"></div>
+        <a routerLink="/settings/users/new" class="btn btn-primary">{{ msgs.create }}</a>
+      </header>
 
-        <div class="field pms-field" style="display: flex; flex-direction: row; align-items: center; gap: 0.5rem;">
+      <div class="card">
+        <div
+          class="field pms-field"
+          style="display: flex; flex-direction: row; align-items: center; gap: 0.5rem;"
+        >
           <label for="includeInactive" style="margin: 0;">{{ msgs.inactive }}</label>
           <input id="includeInactive" type="checkbox" [formControl]="includeInactiveCtrl" />
         </div>
@@ -62,20 +69,29 @@ import { ApiError } from '../../core/api-error';
               }
             </tbody>
           </table>
-
-          <div class="pms-paging">
-            <span>{{ format(totalLabel, { count: totalItems() }) }}</span>
-            <div class="pms-toolbar-spacer"></div>
-            <button type="button" class="btn btn-secondary" (click)="prev()" [disabled]="page() <= 1">
-              {{ msgs.pagePrevious }}
-            </button>
-            <span>{{ format(pageLabel, { page: page() }) }}</span>
-            <button type="button" class="btn btn-secondary" (click)="next()" [disabled]="page() * pageSize() >= totalItems()">
-              {{ msgs.pageNext }}
-            </button>
-          </div>
         }
       </div>
+
+      <!-- The paging bar pins to the foot so walking a full page of accounts
+           never means scrolling to the bottom and back. -->
+      @if (!loading() && items().length > 0) {
+        <footer class="pms-view-foot pms-paging">
+          <span>{{ format(totalLabel, { count: totalItems() }) }}</span>
+          <div class="pms-toolbar-spacer"></div>
+          <button type="button" class="btn btn-secondary" (click)="prev()" [disabled]="page() <= 1">
+            {{ msgs.pagePrevious }}
+          </button>
+          <span>{{ format(pageLabel, { page: page() }) }}</span>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="next()"
+            [disabled]="page() * pageSize() >= totalItems()"
+          >
+            {{ msgs.pageNext }}
+          </button>
+        </footer>
+      }
     </section>
   `,
 })
@@ -125,23 +141,25 @@ export class UsersListComponent implements OnInit {
   private refresh(): void {
     this.loading.set(true);
     this.errorMessage.set(null);
-    this.users.listUsers(
-      {
-        page: this.page(),
-        pageSize: this.pageSize(),
-        includeInactive: this.includeInactiveCtrl.value,
-      },
-      'body',
-    ).subscribe({
-      next: (resp) => {
-        this.items.set(resp.items);
-        this.totalItems.set(resp.totalItems);
-        this.loading.set(false);
-      },
-      error: (err: ApiError) => {
-        this.loading.set(false);
-        this.errorMessage.set(err.message || this.msgs.internalError);
-      },
-    });
+    this.users
+      .listUsers(
+        {
+          page: this.page(),
+          pageSize: this.pageSize(),
+          includeInactive: this.includeInactiveCtrl.value,
+        },
+        'body',
+      )
+      .subscribe({
+        next: (resp) => {
+          this.items.set(resp.items);
+          this.totalItems.set(resp.totalItems);
+          this.loading.set(false);
+        },
+        error: (err: ApiError) => {
+          this.loading.set(false);
+          this.errorMessage.set(err.message || this.msgs.internalError);
+        },
+      });
   }
 }

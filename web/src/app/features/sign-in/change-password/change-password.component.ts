@@ -23,11 +23,13 @@ import { SessionService } from '../../../core/session.service';
   imports: [CommonModule, ReactiveFormsModule],
   template: `
     <section [class.pms-auth-page]="!embedded()">
-      <div class="card blueprint pms-card"
-           [class.elev-md]="!embedded()"
-           [class.pms-auth-card]="!embedded()">
-        <i class="corner tl"></i><i class="corner tr"></i>
-        <i class="corner bl"></i><i class="corner br"></i>
+      <div
+        class="card blueprint pms-card"
+        [class.elev-md]="!embedded()"
+        [class.pms-auth-card]="!embedded()"
+      >
+        <i class="corner tl"></i><i class="corner tr"></i> <i class="corner bl"></i
+        ><i class="corner br"></i>
 
         @if (embedded()) {
           <h2>{{ msgs.passwordChangeTitle }}</h2>
@@ -44,22 +46,41 @@ import { SessionService } from '../../../core/session.service';
         }
         <p class="text-muted">{{ msgs.passwordChangeEndsSessions }}</p>
 
-        <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+        <form id="pms-change-password-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
           <div class="field pms-field">
             <label for="currentPassword">{{ msgs.currentPassword }}</label>
-            <input class="input" id="currentPassword" type="password" formControlName="currentPassword" autocomplete="current-password" />
-            @if (form.controls.currentPassword.touched && form.controls.currentPassword.hasError('required')) {
+            <input
+              class="input"
+              id="currentPassword"
+              type="password"
+              formControlName="currentPassword"
+              autocomplete="current-password"
+            />
+            @if (
+              form.controls.currentPassword.touched &&
+              form.controls.currentPassword.hasError('required')
+            ) {
               <div class="pms-field-error">{{ msgs.requiredField }}</div>
             }
           </div>
 
           <div class="field pms-field">
             <label for="newPassword">{{ msgs.newPassword }}</label>
-            <input class="input" id="newPassword" type="password" formControlName="newPassword" autocomplete="new-password" />
-            @if (form.controls.newPassword.touched && form.controls.newPassword.hasError('required')) {
+            <input
+              class="input"
+              id="newPassword"
+              type="password"
+              formControlName="newPassword"
+              autocomplete="new-password"
+            />
+            @if (
+              form.controls.newPassword.touched && form.controls.newPassword.hasError('required')
+            ) {
               <div class="pms-field-error">{{ msgs.requiredField }}</div>
             }
-            @if (form.controls.newPassword.touched && form.controls.newPassword.hasError('minlength')) {
+            @if (
+              form.controls.newPassword.touched && form.controls.newPassword.hasError('minlength')
+            ) {
               <div class="pms-field-error">{{ msgs.passwordTooShort }}</div>
             }
           </div>
@@ -68,11 +89,35 @@ import { SessionService } from '../../../core/session.service';
             <div class="pms-error-banner" role="alert">{{ msg }}</div>
           }
 
-          <button type="submit" class="btn btn-primary btn-block" [disabled]="submitting() || form.invalid">
-            {{ submitting() ? msgs.loading : msgs.passwordChangeSubmit }}
-          </button>
+          <!-- Standalone (the forced change) keeps the design's submit at the
+               foot of the centred card. Embedded (the profile screen) the
+               submit moves into a pinned foot so it stays reachable; it
+               reaches this same form by id. One button either way, same
+               bindings. -->
+          @if (!embedded()) {
+            <button
+              type="submit"
+              class="btn btn-primary btn-block"
+              [disabled]="submitting() || form.invalid"
+            >
+              {{ submitting() ? msgs.loading : msgs.passwordChangeSubmit }}
+            </button>
+          }
         </form>
       </div>
+
+      @if (embedded()) {
+        <footer class="pms-view-foot">
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="submitting() || form.invalid"
+            form="pms-change-password-form"
+          >
+            {{ submitting() ? msgs.loading : msgs.passwordChangeSubmit }}
+          </button>
+        </footer>
+      }
     </section>
   `,
 })
@@ -112,26 +157,28 @@ export class ChangePasswordComponent {
 
     const { currentPassword, newPassword } = this.form.getRawValue();
 
-    this.auth.changeOwnPassword({ changeOwnPasswordRequest: { currentPassword, newPassword } }, 'response').subscribe({
-      next: () => {
-        this.session.signOut();
-        this.submitting.set(false);
-        // After password change the server revokes every session — there is
-        // no auto-sign-in. Send the user back to sign-in.
-        void this.router.navigate(['/sign-in']);
-      },
-      error: (err: ApiError) => {
-        this.submitting.set(false);
-        if (err.code === 'invalid_credentials') {
-          this.errorMessage.set(this.msgs.passwordWrongCurrent);
-        } else if (err.code === 'invalid_request' && err.fields?.['newPassword']) {
-          this.errorMessage.set(err.fields['newPassword']);
-        } else if (err.message) {
-          this.errorMessage.set(err.message);
-        } else {
-          this.errorMessage.set(this.msgs.internalError);
-        }
-      },
-    });
+    this.auth
+      .changeOwnPassword({ changeOwnPasswordRequest: { currentPassword, newPassword } }, 'response')
+      .subscribe({
+        next: () => {
+          this.session.signOut();
+          this.submitting.set(false);
+          // After password change the server revokes every session — there is
+          // no auto-sign-in. Send the user back to sign-in.
+          void this.router.navigate(['/sign-in']);
+        },
+        error: (err: ApiError) => {
+          this.submitting.set(false);
+          if (err.code === 'invalid_credentials') {
+            this.errorMessage.set(this.msgs.passwordWrongCurrent);
+          } else if (err.code === 'invalid_request' && err.fields?.['newPassword']) {
+            this.errorMessage.set(err.fields['newPassword']);
+          } else if (err.message) {
+            this.errorMessage.set(err.message);
+          } else {
+            this.errorMessage.set(this.msgs.internalError);
+          }
+        },
+      });
   }
 }

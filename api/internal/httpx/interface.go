@@ -5,6 +5,7 @@ import (
 
 	"pms/internal/gen"
 
+	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -18,6 +19,10 @@ var _ gen.ServerInterface = (*Server)(nil)
 
 func (s *Server) GetHealth(w http.ResponseWriter, r *http.Request) {
 	s.handleHealth().ServeHTTP(w, r)
+}
+
+func (s *Server) GetDashboard(w http.ResponseWriter, r *http.Request) {
+	s.handleDashboard().ServeHTTP(w, r)
 }
 
 func (s *Server) SignIn(w http.ResponseWriter, r *http.Request) {
@@ -58,4 +63,116 @@ func (s *Server) ResetUserPassword(w http.ResponseWriter, r *http.Request, userI
 
 func (s *Server) ListAuditRecords(w http.ResponseWriter, r *http.Request, params gen.ListAuditRecordsParams) {
 	s.handleListAuditRecords().ServeHTTP(w, r)
+}
+func (s *Server) UndoAuditRecord(w http.ResponseWriter, r *http.Request, recordId int64) {
+	s.handleUndoAuditRecord(recordId).ServeHTTP(w, r)
+}
+
+// Properties
+func (s *Server) ListProperties(w http.ResponseWriter, r *http.Request, params gen.ListPropertiesParams) {
+	s.handleListProperties().ServeHTTP(w, r)
+}
+func (s *Server) CreateProperty(w http.ResponseWriter, r *http.Request) {
+	s.handleCreateProperty().ServeHTTP(w, r)
+}
+func (s *Server) GetProperty(w http.ResponseWriter, r *http.Request, propertyId openapi_types.UUID) {
+	s.handleGetProperty().ServeHTTP(w, r)
+}
+func (s *Server) UpdateProperty(w http.ResponseWriter, r *http.Request, propertyId openapi_types.UUID) {
+	s.handleUpdateProperty().ServeHTTP(w, r)
+}
+func (s *Server) ChangePropertyCode(w http.ResponseWriter, r *http.Request, propertyId openapi_types.UUID) {
+	s.handleChangePropertyCode().ServeHTTP(w, r)
+}
+func (s *Server) ArchiveProperty(w http.ResponseWriter, r *http.Request, propertyId openapi_types.UUID) {
+	s.handleArchiveProperty().ServeHTTP(w, r)
+}
+func (s *Server) RestoreProperty(w http.ResponseWriter, r *http.Request, propertyId openapi_types.UUID) {
+	s.handleRestoreProperty().ServeHTTP(w, r)
+}
+
+// Lookups
+func (s *Server) ListPropertyTypes(w http.ResponseWriter, r *http.Request) {
+	s.handleListPropertyTypes().ServeHTTP(w, r)
+}
+func (s *Server) CreatePropertyType(w http.ResponseWriter, r *http.Request) {
+	s.handleCreatePropertyType().ServeHTTP(w, r)
+}
+func (s *Server) RenamePropertyType(w http.ResponseWriter, r *http.Request, lookupId openapi_types.UUID) {
+	s.handleRenamePropertyType().ServeHTTP(w, r)
+}
+func (s *Server) DeletePropertyType(w http.ResponseWriter, r *http.Request, lookupId openapi_types.UUID) {
+	s.handleDeletePropertyType().ServeHTTP(w, r)
+}
+func (s *Server) ListAreas(w http.ResponseWriter, r *http.Request) {
+	s.handleListAreas().ServeHTTP(w, r)
+}
+func (s *Server) CreateArea(w http.ResponseWriter, r *http.Request) {
+	s.handleCreateArea().ServeHTTP(w, r)
+}
+func (s *Server) RenameArea(w http.ResponseWriter, r *http.Request, lookupId openapi_types.UUID) {
+	s.handleRenameArea().ServeHTTP(w, r)
+}
+func (s *Server) DeleteArea(w http.ResponseWriter, r *http.Request, lookupId openapi_types.UUID) {
+	s.handleDeleteArea().ServeHTTP(w, r)
+}
+
+// Custom fields
+func (s *Server) ListCustomFields(w http.ResponseWriter, r *http.Request) {
+	s.handleListCustomFields().ServeHTTP(w, r)
+}
+func (s *Server) CreateCustomField(w http.ResponseWriter, r *http.Request) {
+	s.handleCreateCustomField().ServeHTTP(w, r)
+}
+func (s *Server) UpdateCustomField(w http.ResponseWriter, r *http.Request, fieldId openapi_types.UUID) {
+	s.handleUpdateCustomField().ServeHTTP(w, r)
+}
+func (s *Server) DeleteCustomField(w http.ResponseWriter, r *http.Request, fieldId openapi_types.UUID) {
+	s.handleDeleteCustomField().ServeHTTP(w, r)
+}
+
+// Search
+func (s *Server) SearchProperties(w http.ResponseWriter, r *http.Request) {
+	s.handleSearchProperties().ServeHTTP(w, r)
+}
+
+// Attachments — feature 003-property-attachments-ocr. Each method dispatches
+// to the concrete handler that lives in attachment_handlers.go or
+// attachment_content_handler.go; the wiring exists here so that *Server
+// satisfies gen.ServerInterface and the build passes (Constitution III:
+// handlers must exist for every generated route).
+func (s *Server) ListAttachments(w http.ResponseWriter, r *http.Request, propertyId gen.PropertyId) {
+	s.handleListAttachments(uuid.UUID(propertyId)).ServeHTTP(w, r)
+}
+func (s *Server) UploadAttachment(w http.ResponseWriter, r *http.Request, propertyId gen.PropertyId) {
+	s.handleUploadAttachment(uuid.UUID(propertyId)).ServeHTTP(w, r)
+}
+func (s *Server) GetAttachment(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleGetAttachment(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) UpdateAttachment(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleUpdateAttachment(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) DeleteAttachment(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleDeleteAttachment(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) GetAttachmentContent(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId, params gen.GetAttachmentContentParams) {
+	disp := "attachment"
+	if params.Disposition != nil {
+		disp = string(*params.Disposition)
+	}
+	local := genGetAttachmentContentParams{Disposition: disp}
+	s.handleGetAttachmentContent(uuid.UUID(attachmentId), local).ServeHTTP(w, r)
+}
+func (s *Server) GetAttachmentText(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleGetAttachmentText(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) CorrectAttachmentText(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleCorrectAttachmentText(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) ReextractAttachmentText(w http.ResponseWriter, r *http.Request, attachmentId gen.AttachmentId) {
+	s.handleReextractAttachmentText(uuid.UUID(attachmentId)).ServeHTTP(w, r)
+}
+func (s *Server) SearchDocuments(w http.ResponseWriter, r *http.Request) {
+	s.handleSearchDocuments().ServeHTTP(w, r)
 }

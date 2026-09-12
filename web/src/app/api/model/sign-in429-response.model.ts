@@ -1,5 +1,5 @@
 /**
- * Property Management System — Authentication and Accounts
+ * Property Management System
  *
  * 
  *
@@ -33,7 +33,14 @@ export namespace SignIn429Response {
         Forbidden: 'forbidden',
         NotFound: 'not_found',
         Conflict: 'conflict',
+        InUse: 'in_use',
+        VersionConflict: 'version_conflict',
+        Archived: 'archived',
         PasswordChangeRequired: 'password_change_required',
+        TooLarge: 'too_large',
+        UnsupportedType: 'unsupported_type',
+        IntegrityFailed: 'integrity_failed',
+        KeyUnavailable: 'key_unavailable',
         InternalError: 'internal_error',
     } as const;
     export type CodeEnum = typeof CodeEnum[keyof typeof CodeEnum];

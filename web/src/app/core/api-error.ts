@@ -10,6 +10,9 @@ export type ErrorCode =
   | 'forbidden'
   | 'not_found'
   | 'conflict'
+  | 'in_use'
+  | 'version_conflict'
+  | 'archived'
   | 'password_change_required'
   | 'internal_error';
 
